@@ -1,0 +1,236 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --neon-cyan: #00f0ff;
+  --neon-magenta: #ff00cc;
+  --neon-purple: #7b2fff;
+  --bg-primary: #050510;
+  --bg-card: rgba(20, 20, 45, 0.7);
+  --bg-glass: rgba(10, 10, 30, 0.85);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  height: -webkit-fill-available;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+body {
+  background: var(--bg-primary);
+  color: white;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+#__next,
+main {
+  height: 100%;
+}
+
+/* Scrollable pages */
+.page-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 240, 255, 0.12);
+  border-radius: 20px;
+}
+
+.glass-card-dark {
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+}
+
+/* Neon glow text */
+.neon-text-cyan {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px #00f0ff88, 0 0 20px #00f0ff44;
+}
+
+.neon-text-magenta {
+  color: var(--neon-magenta);
+  text-shadow: 0 0 10px #ff00cc88, 0 0 20px #ff00cc44;
+}
+
+/* Neon border glow */
+.neon-border-cyan {
+  border: 1px solid var(--neon-cyan);
+  box-shadow: 0 0 10px #00f0ff44, inset 0 0 10px #00f0ff11;
+}
+
+.neon-border-magenta {
+  border: 1px solid var(--neon-magenta);
+  box-shadow: 0 0 10px #ff00cc44, inset 0 0 10px #ff00cc11;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Impact ring */
+.impact-ring {
+  position: relative;
+}
+
+.impact-ring::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--neon-cyan) 0%,
+    var(--neon-magenta) 50%,
+    var(--neon-cyan) 100%
+  );
+  z-index: -1;
+  animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Button press effect */
+.btn-press {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-press:active {
+  transform: scale(0.95);
+}
+
+/* Cyber grid background */
+.cyber-bg {
+  background-color: var(--bg-primary);
+  background-image: linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Scan line effect */
+@keyframes scanline {
+  0% {
+    transform: translateY(-100vh);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+.scanline::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 240, 255, 0.4),
+    transparent
+  );
+  animation: scanline 6s linear infinite;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Camera feed */
+.camera-feed {
+  transform: scaleX(-1);
+}
+
+/* Bottom safe area */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 16px);
+}
+
+/* Skeleton animation for loading */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 240, 255, 0.05) 25%,
+    rgba(0, 240, 255, 0.12) 50%,
+    rgba(0, 240, 255, 0.05) 75%
+  );
+  background-size: 400px 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+/* Progress bar glow */
+.progress-glow {
+  box-shadow: 0 0 12px var(--neon-cyan), 0 0 24px rgba(0, 240, 255, 0.4);
+}
+
+/* Record button pulse */
+@keyframes record-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 50, 50, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 20px rgba(255, 50, 50, 0);
+  }
+}
+
+.record-pulse {
+  animation: record-pulse 1.2s ease-out infinite;
+}
+
+/* High impact ring */
+@keyframes impact-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff55;
+  }
+  50% {
+    box-shadow: 0 0 25px #00f0ff, 0 0 50px #00f0ff88;
+  }
+}
+
+.high-impact {
+  animation: impact-glow 0.8s ease-in-out infinite;
+}

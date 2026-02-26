@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="120" fill="#050510"/>
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Body silhouette -->
+  <ellipse cx="256" cy="170" rx="50" ry="50" stroke="#00f0ff" stroke-width="6" fill="none" filter="url(#glow)"/>
+  <!-- Arms open gesture -->
+  <line x1="120" y1="240" x2="200" y2="270" stroke="#00f0ff" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
+  <line x1="312" y1="270" x2="392" y2="240" stroke="#00f0ff" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- Torso -->
+  <line x1="256" y1="220" x2="256" y2="350" stroke="#00f0ff" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- Shoulders -->
+  <line x1="200" y1="270" x2="312" y2="270" stroke="#00f0ff" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- Legs -->
+  <line x1="256" y1="350" x2="210" y2="430" stroke="#7b2fff" stroke-width="8" stroke-linecap="round"/>
+  <line x1="256" y1="350" x2="302" y2="430" stroke="#7b2fff" stroke-width="8" stroke-linecap="round"/>
+  <!-- Hand dots -->
+  <circle cx="120" cy="240" r="14" fill="#ff00cc" filter="url(#glow)"/>
+  <circle cx="392" cy="240" r="14" fill="#ff00cc" filter="url(#glow)"/>
+  <!-- GF text hint -->
+  <text x="256" y="490" font-family="Arial Black" font-weight="900" font-size="48" fill="#00f0ff" text-anchor="middle" opacity="0.7">GF</text>
+</svg>
