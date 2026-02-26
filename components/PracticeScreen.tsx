@@ -187,6 +187,14 @@ export default function PracticeScreen() {
     }
   }, []);
 
+  // Assign stream once the video element mounts (perm transitions to 'granted')
+  useEffect(() => {
+    if (perm === 'granted' && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [perm]);
+
   // Auto-check existing permission
   useEffect(() => {
     if (typeof navigator === 'undefined') return;
