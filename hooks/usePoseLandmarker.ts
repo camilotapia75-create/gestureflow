@@ -33,6 +33,7 @@ export function usePoseLandmarker(): PoseLandmarkerState {
   const [error, setError] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const landmarkerRef = useRef<any>(null);
+  const consecutiveFailsRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,9 +63,9 @@ export function usePoseLandmarker(): PoseLandmarkerState {
             baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
             runningMode: 'VIDEO',
             numPoses: 1,
-            minPoseDetectionConfidence: 0.45,
-            minPosePresenceConfidence: 0.45,
-            minTrackingConfidence: 0.45,
+            minPoseDetectionConfidence: 0.3,
+            minPosePresenceConfidence: 0.3,
+            minTrackingConfidence: 0.3,
           });
         } catch {
           if (cancelled) return;
@@ -73,9 +74,9 @@ export function usePoseLandmarker(): PoseLandmarkerState {
             baseOptions: { modelAssetPath: MODEL_URL, delegate: 'CPU' },
             runningMode: 'VIDEO',
             numPoses: 1,
-            minPoseDetectionConfidence: 0.45,
-            minPosePresenceConfidence: 0.45,
-            minTrackingConfidence: 0.45,
+            minPoseDetectionConfidence: 0.3,
+            minPosePresenceConfidence: 0.3,
+            minTrackingConfidence: 0.3,
           });
         }
 
@@ -105,8 +106,14 @@ export function usePoseLandmarker(): PoseLandmarkerState {
     (video: HTMLVideoElement, timestamp: number): PoseLandmarkerResult | null => {
       if (!landmarkerRef.current || stage !== 'ready') return null;
       try {
-        return landmarkerRef.current.detectForVideo(video, timestamp);
-      } catch {
+        const result = landmarkerRef.current.detectForVideo(video, timestamp);
+        consecutiveFailsRef.current = 0;
+        return result;
+      } catch (err) {
+        consecutiveFailsRef.current += 1;
+        if (consecutiveFailsRef.current === 1 || consecutiveFailsRef.current % 60 === 0) {
+          console.warn('[PoseLandmarker] detectForVideo failed:', err);
+        }
         return null;
       }
     },

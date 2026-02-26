@@ -158,6 +158,10 @@ export default function PracticeScreen() {
   const { stage, progress, error: modelError, isReady, detect } = usePoseLandmarker();
   const { state, start, stop, processPose } = useSession();
 
+  const nullStreakRef = useRef(0);
+  const debugTimerRef = useRef(0);
+  const [debugLine, setDebugLine] = useState('');
+
   // ── Camera setup ────────────────────────────────────────────────────────
   const startCamera = useCallback(async () => {
     setPerm('requesting');
@@ -231,15 +235,23 @@ export default function PracticeScreen() {
       const ctx = canvas.getContext('2d');
 
       if (result && result.landmarks.length > 0 && ctx) {
+        nullStreakRef.current = 0;
         const lms = result.landmarks[0];
-
-        // Process pose at ~30fps but score every 300ms (handled inside useSession)
         processPose(lms);
-
-        // Draw skeleton every frame
         drawGlowingSkeleton(ctx, lms, canvas.width, canvas.height, state.impact);
-      } else if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      } else {
+        nullStreakRef.current += 1;
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      // Debug: flush every 500ms
+      const now = Date.now();
+      if (now - debugTimerRef.current > 500) {
+        debugTimerRef.current = now;
+        const lmCount = result?.landmarks?.length ?? 0;
+        setDebugLine(
+          `model:${stage} vr:${video.readyState} lm:${lmCount} nulls:${nullStreakRef.current} ${video.videoWidth}×${video.videoHeight}`
+        );
       }
 
       animFrameRef.current = requestAnimationFrame(loop);
@@ -342,6 +354,13 @@ export default function PracticeScreen() {
         className="absolute inset-0 w-full h-full camera-feed"
         style={{ pointerEvents: 'none' }}
       />
+
+      {/* ── Debug overlay ── */}
+      {debugLine && (
+        <div className="absolute bottom-20 left-2 z-50 text-[10px] font-mono text-white/60 bg-black/50 px-2 py-1 rounded pointer-events-none">
+          {debugLine}
+        </div>
+      )}
 
       {/* ── Dark overlay (top and bottom gradients) ── */}
       <div
