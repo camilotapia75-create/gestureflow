@@ -82,6 +82,13 @@ function isVisible(lm: Point, threshold = 0.3): boolean {
   return (lm.visibility ?? 1) > threshold;
 }
 
+// Inverted parabola peaking at 110° — rewards the natural presenter gesture range
+// (90–130° elbow angle). Penalises limp arms (<60°) and locked-out arms (>155°).
+function armQuality(angle: number): number {
+  const delta = (angle - 110) / 70;
+  return clamp(100 - delta * delta * 100);
+}
+
 // ─── Core Analysis ────────────────────────────────────────────────────────
 
 export function analyzeGesture(landmarks: Point[]): GestureResult {
@@ -121,6 +128,18 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   const handsAboveWaist =
     (!isVisible(lW) || lW.y < hipY) && (!isVisible(rW) || rW.y < hipY);
 
+  // ── Power zone: hands between shoulders and hips score highest (Navarro / TED research) ──
+  const shoulderY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.35;
+  const zoneScore = (wrist: Point, visible: boolean) => {
+    if (!visible) return 60;
+    if (wrist.y > shoulderY && wrist.y < hipY) return 100; // in zone
+    if (wrist.y <= shoulderY) return 65;                   // above shoulders (theatrical)
+    return 20;                                             // below hips (passive)
+  };
+  const powerZoneScore = (
+    zoneScore(lW, isVisible(lW)) + zoneScore(rW, isVisible(rW))
+  ) / 2;
+
   // ── Hands near face (fidgeting) ──
   const faceDist = 0.18;
   const leftFidget = isVisible(lW) && dist2d(lW, nose) < faceDist;
@@ -133,6 +152,10 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   const maxExt = Math.max(leftExtend, rightExtend, 0.001);
   const symmetry = clamp(100 - (Math.abs(leftExtend - rightExtend) / maxExt) * 100);
 
+  // ── Pointing asymmetry: one arm clearly more extended than the other ──
+  const extRatio = Math.min(leftExtend, rightExtend) / maxExt;
+  const isAsymmetric = extRatio < 0.65 && maxExt > shoulderWidth * 0.6;
+
   // ── Hand openness: thumb-index spread ──
   const leftOpenness =
     isVisible(lI) && isVisible(lT) ? clamp(dist2d(lI, lT) * 1000) : 50;
@@ -143,18 +166,19 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   // ── Posture openness ──
   const postureScore = clamp(shoulderWidth * 350);
 
-  // ── Arm extension score ──
-  const avgArmAngle = (leftArmAngle + rightArmAngle) / 2;
-  const armScore = clamp((avgArmAngle / 180) * 100);
+  // ── Arm quality score (peaks at 110°, penalises limp or locked-out arms) ──
+  const armScore = (armQuality(leftArmAngle) + armQuality(rightArmAngle)) / 2;
 
   // ── Build Impact score ──
+  // Weights informed by TED/executive presentation research:
+  //   arm quality (30%) · power zone (25%) · open palms (20%) · posture (15%) · hand spread bonus · symmetry barely matters
   let impact =
-    armScore * 0.3 +
-    postureScore * 0.2 +
-    (handsAboveWaist ? 100 : 40) * 0.2 +
-    symmetry * 0.15 +
-    (handOpenness / 100) * 25 +
-    (handSpread > 1.2 ? 15 : handSpread * 12);
+    armScore * 0.30 +
+    powerZoneScore * 0.25 +
+    (handOpenness / 100) * 20 +
+    postureScore * 0.15 +
+    symmetry * 0.05 +
+    (handSpread > 0.9 ? 15 : handSpread * 12);
 
   // Penalties
   if (fidgeting) impact -= 25;
@@ -166,7 +190,7 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   const leftStraight = leftArmAngle > 120;
   const rightStraight = rightArmAngle > 120;
   const handsClose =
-    isVisible(lW) && isVisible(rW) && dist2d(lW, rW) < 0.12;
+    isVisible(lW) && isVisible(rW) && dist2d(lW, rW) < 0.16;
   const handsAtChest =
     isVisible(lW) && isVisible(rW) &&
     lW.y > (lS.y ?? 0) && lW.y < (lH.y ?? 1) &&
@@ -180,7 +204,7 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
     gesture = 'OPEN GESTURE';
   } else if (handsClose && handsAtChest) {
     gesture = 'STEEPLE';
-  } else if ((leftStraight && !rightStraight) || (rightStraight && !leftStraight)) {
+  } else if (isAsymmetric) {
     gesture = 'POINTING';
   } else if (impact > 45) {
     gesture = 'EMPHASIS';
