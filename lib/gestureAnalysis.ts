@@ -163,8 +163,8 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   // ── Classify gesture ──
   const leftArmUp = isVisible(lW) && lW.y < lS.y;
   const rightArmUp = isVisible(rW) && rW.y < rS.y;
-  const leftStraight = leftArmAngle > 145;
-  const rightStraight = rightArmAngle > 145;
+  const leftStraight = leftArmAngle > 120;
+  const rightStraight = rightArmAngle > 120;
   const handsClose =
     isVisible(lW) && isVisible(rW) && dist2d(lW, rW) < 0.12;
   const handsAtChest =
@@ -174,15 +174,15 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
 
   let gesture: GestureType = 'REST';
 
-  if (leftArmUp && rightArmUp && handSpread > 1.4) {
+  if (leftArmUp && rightArmUp && handSpread > 1.1) {
     gesture = 'POWER POSE';
-  } else if (handSpread > 1.2 || (leftStraight && rightStraight)) {
+  } else if (handSpread > 0.9 || (leftStraight && rightStraight)) {
     gesture = 'OPEN GESTURE';
   } else if (handsClose && handsAtChest) {
     gesture = 'STEEPLE';
   } else if ((leftStraight && !rightStraight) || (rightStraight && !leftStraight)) {
     gesture = 'POINTING';
-  } else if (impact > 55 && !fidgeting) {
+  } else if (impact > 45) {
     gesture = 'EMPHASIS';
   } else if (postureScore > 60 && !handsAboveWaist) {
     gesture = 'WIDE STANCE';
