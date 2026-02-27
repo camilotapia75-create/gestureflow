@@ -20,6 +20,7 @@ export interface GestureResult {
   fidgeting: boolean;
   isPowerMove: boolean;
   isSlouching: boolean;
+  noseAboveShoulder: number; // raw ratio — exposed for debug calibration
 }
 
 export interface CoachTip {
@@ -131,25 +132,17 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
 
   // ── Slouching: nose should be clearly above shoulder level ──
   // Normalize by shoulder width so the check is distance-invariant.
-  // Threshold raised to 0.40 (was 0.25) to catch moderate slouching,
-  // not just severe head-drop. Also check forward-head posture via Z axis.
+  // Threshold 0.30: slightly stricter than original 0.25 but won't fire for normal posture.
+  // NOTE: Z-axis forward-head check was removed — for a frontal webcam the nose is
+  // anatomically always slightly in front of the shoulders, so the Z delta is negative
+  // even with perfect posture and produces constant false positives.
   const shoulderMidY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.4;
   const noseAboveShoulder =
     isVisible(nose) && isVisible(lS) && isVisible(rS) && shoulderWidth > 0
       ? (shoulderMidY - nose.y) / shoulderWidth
       : 0.5; // assume good posture if landmarks not visible
 
-  // Forward-head check via Z axis: positive Z = away from camera in MediaPipe.
-  // If nose Z is much more negative (closer to camera) than shoulders, the head
-  // is jutting forward — a common desk-posture issue the Y-axis alone misses.
-  const shoulderMidZ = ((lS.z ?? 0) + (rS.z ?? 0)) / 2;
-  const noseZ = nose?.z ?? 0;
-  const isHeadForward =
-    isVisible(nose) && isVisible(lS) && isVisible(rS)
-      ? noseZ - shoulderMidZ < -0.12
-      : false;
-
-  const isSlouching = noseAboveShoulder < 0.40 || isHeadForward;
+  const isSlouching = noseAboveShoulder < 0.30;
 
   // ── Power zone: hands between shoulders and hips score highest (Navarro / TED research) ──
   const shoulderY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.35;
@@ -249,6 +242,7 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
     fidgeting,
     isPowerMove,
     isSlouching,
+    noseAboveShoulder: Math.round(noseAboveShoulder * 100) / 100,
   };
 }
 
