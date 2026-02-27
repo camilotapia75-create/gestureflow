@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Lightbulb, Square } from 'lucide-react';
 
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
+import { useFaceLandmarker } from '@/hooks/useFaceLandmarker';
 import { useSession } from '@/hooks/useSession';
 import { drawGlowingSkeleton } from '@/lib/gestureAnalysis';
 import { recordSession, formatTime } from '@/lib/storage';
@@ -156,7 +157,15 @@ export default function PracticeScreen() {
   } | null>(null);
 
   const { stage, progress, error: modelError, isReady, detect } = usePoseLandmarker();
+  const { isReady: faceReady, detectSmile } = useFaceLandmarker();
   const { state, start, stop, processPose } = useSession();
+
+  const [isSmiling, setIsSmiling] = useState(false);
+  const isSmilingRef = useRef(false);
+  const lastFaceDetectRef = useRef(0);
+  // Stable refs so the RAF loop doesn't need to restart when face model loads
+  const faceReadyRef = useRef(false);
+  const detectSmileRef = useRef(detectSmile);
 
   const nullStreakRef = useRef(0);
   const debugTimerRef = useRef(0);
@@ -234,18 +243,30 @@ export default function PracticeScreen() {
       const result = detect(video, timestamp);
       const ctx = canvas.getContext('2d');
 
+      const now = Date.now();
+
       if (result && result.landmarks.length > 0 && ctx) {
         nullStreakRef.current = 0;
         const lms = result.landmarks[0];
-        processPose(lms);
-        drawGlowingSkeleton(ctx, lms, canvas.width, canvas.height, state.impact);
+
+        // Smile detection at ~7fps (lightweight polling)
+        if (faceReadyRef.current && now - lastFaceDetectRef.current > 150) {
+          lastFaceDetectRef.current = now;
+          const smiling = detectSmileRef.current(video, timestamp);
+          if (smiling !== isSmilingRef.current) {
+            isSmilingRef.current = smiling;
+            setIsSmiling(smiling);
+          }
+        }
+
+        processPose(lms, isSmilingRef.current);
+        drawGlowingSkeleton(ctx, lms, canvas.width, canvas.height, state.impact, state.isSlouching);
       } else {
         nullStreakRef.current += 1;
         if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
 
       // Debug: flush every 500ms
-      const now = Date.now();
       if (now - debugTimerRef.current > 500) {
         debugTimerRef.current = now;
         const lmCount = result?.landmarks?.length ?? 0;
@@ -302,6 +323,10 @@ export default function PracticeScreen() {
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
+
+  // Keep stable refs in sync so the RAF loop always sees the latest values
+  faceReadyRef.current = faceReady;
+  detectSmileRef.current = detectSmile;
 
   const gestureColor = GESTURE_COLORS[state.gesture] ?? '#00f0ff';
 
@@ -413,25 +438,78 @@ export default function PracticeScreen() {
         </div>
       </div>
 
-      {/* ── STREAK indicator ── */}
+      {/* ── RIGHT SIDE: streak + slouching warning ── */}
+      <div className="absolute top-20 right-4 z-20 flex flex-col gap-2 items-end">
+        <AnimatePresence>
+          {state.streak > 3 && (
+            <motion.div
+              key="streak"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.25 }}
+            >
+              <div
+                className="px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-black"
+                style={{
+                  background: 'rgba(123,47,255,0.2)',
+                  border: '1px solid rgba(123,47,255,0.5)',
+                  color: '#7b2fff',
+                  boxShadow: '0 0 12px rgba(123,47,255,0.4)',
+                }}
+              >
+                ⚡ {state.streak}s streak
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {state.isSlouching && (
+            <motion.div
+              key="slouch"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.25 }}
+            >
+              <div
+                className="px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-black"
+                style={{
+                  background: 'rgba(255,68,68,0.15)',
+                  border: '1px solid rgba(255,68,68,0.5)',
+                  color: '#ff4444',
+                  boxShadow: '0 0 12px rgba(255,68,68,0.35)',
+                }}
+              >
+                🪑 Sit Up!
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── LEFT SIDE: smile indicator (visible once face model is ready) ── */}
       <AnimatePresence>
-        {state.streak > 3 && (
+        {faceReady && (
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
+            key="smile"
+            initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="absolute top-20 right-4 z-20"
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="absolute top-20 left-4 z-20"
           >
             <div
-              className="px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-black"
+              className="px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-black transition-all duration-300"
               style={{
-                background: 'rgba(123,47,255,0.2)',
-                border: '1px solid rgba(123,47,255,0.5)',
-                color: '#7b2fff',
-                boxShadow: '0 0 12px rgba(123,47,255,0.4)',
+                background: isSmiling ? 'rgba(0,255,136,0.15)' : 'rgba(30,30,50,0.6)',
+                border: `1px solid ${isSmiling ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                color: isSmiling ? '#00ff88' : '#666688',
+                boxShadow: isSmiling ? '0 0 12px rgba(0,255,136,0.3)' : 'none',
               }}
             >
-              ⚡ {state.streak}s streak
+              {isSmiling ? '😊' : '😐'} {isSmiling ? 'Smiling!' : 'Smile'}
             </div>
           </motion.div>
         )}
@@ -463,7 +541,7 @@ export default function PracticeScreen() {
       >
         <div className="flex items-center justify-between px-6 pt-4 pb-4">
 
-          {/* Gesture counter */}
+          {/* Good moves counter */}
           <motion.div
             animate={{ scale: state.gestures > 0 ? [1, 1.1, 1] : 1 }}
             transition={{ duration: 0.3 }}
@@ -471,12 +549,12 @@ export default function PracticeScreen() {
           >
             <span
               className="text-2xl font-black leading-none"
-              style={{ color: '#00f0ff', textShadow: '0 0 12px #00f0ff66' }}
+              style={{ color: '#00ff88', textShadow: '0 0 12px rgba(0,255,136,0.4)' }}
             >
               {state.gestures}
             </span>
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-0.5">
-              GESTURES
+              GOOD MOVES
             </span>
           </motion.div>
 

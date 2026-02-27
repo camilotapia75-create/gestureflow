@@ -15,6 +15,7 @@ export interface SessionState {
   gesture: GestureResult['gesture'];
   tips: CoachTip[];
   confetti: boolean;
+  isSlouching: boolean;
 }
 
 const INITIAL_STATE: SessionState = {
@@ -29,13 +30,14 @@ const INITIAL_STATE: SessionState = {
   gesture: 'REST',
   tips: [],
   confetti: false,
+  isSlouching: false,
 };
 
 export interface SessionControls {
   state: SessionState;
   start: () => void;
   stop: () => void;
-  processPose: (landmarks: { x: number; y: number; z: number; visibility?: number }[]) => void;
+  processPose: (landmarks: { x: number; y: number; z: number; visibility?: number }[], isSmiling?: boolean) => void;
 }
 
 export function useSession(): SessionControls {
@@ -98,7 +100,7 @@ export function useSession(): SessionControls {
   }, []);
 
   const processPose = useCallback(
-    (landmarks: { x: number; y: number; z: number; visibility?: number }[]) => {
+    (landmarks: { x: number; y: number; z: number; visibility?: number }[], isSmiling = true) => {
       if (!activeRef.current || landmarks.length === 0) return;
 
       const now = Date.now();
@@ -150,7 +152,7 @@ export function useSession(): SessionControls {
         const shouldConfetti = roundedImpact >= 95 && !confettiFiredRef.current;
         if (shouldConfetti) confettiFiredRef.current = true;
 
-        const tips = selectCoachTips(result, elapsed);
+        const tips = selectCoachTips(result, elapsed, isSmiling);
 
         setState((prev) => ({
           ...prev,
@@ -163,6 +165,7 @@ export function useSession(): SessionControls {
           bestStreak: bestStreakRef.current,
           tips,
           confetti: shouldConfetti,
+          isSlouching: result.isSlouching,
         }));
       }
     },

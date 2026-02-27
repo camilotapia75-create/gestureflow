@@ -19,6 +19,7 @@ export interface GestureResult {
   symmetry: number; // 0–100
   fidgeting: boolean;
   isPowerMove: boolean;
+  isSlouching: boolean;
 }
 
 export interface CoachTip {
@@ -128,6 +129,16 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   const handsAboveWaist =
     (!isVisible(lW) || lW.y < hipY) && (!isVisible(rW) || rW.y < hipY);
 
+  // ── Slouching: nose should be clearly above shoulder level ──
+  // Normalize by shoulder width so the check is distance-invariant.
+  // ratio < 0.25 means the nose is barely above the shoulders → slouching.
+  const shoulderMidY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.4;
+  const noseAboveShoulder =
+    isVisible(nose) && isVisible(lS) && isVisible(rS) && shoulderWidth > 0
+      ? (shoulderMidY - nose.y) / shoulderWidth
+      : 0.5; // assume good posture if landmarks not visible
+  const isSlouching = noseAboveShoulder < 0.25;
+
   // ── Power zone: hands between shoulders and hips score highest (Navarro / TED research) ──
   const shoulderY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.35;
   const zoneScore = (wrist: Point, visible: boolean) => {
@@ -182,6 +193,7 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
 
   // Penalties
   if (fidgeting) impact -= 25;
+  if (isSlouching) impact -= 15;
   impact = clamp(impact);
 
   // ── Classify gesture ──
@@ -224,6 +236,7 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
     symmetry: Math.round(symmetry),
     fidgeting,
     isPowerMove,
+    isSlouching,
   };
 }
 
@@ -244,11 +257,15 @@ export const ALL_TIPS: CoachTip[] = [
   { id: 'symmetry', text: 'Balance both sides — asymmetry looks uncertain', icon: '⚖️', priority: 3 },
   { id: 'power-pose', text: 'Arms up + wide — the ultimate power move!', icon: '⚡', priority: 1 },
   { id: 'open-chest', text: 'Open chest toward camera for maximum presence', icon: '🌟', priority: 4 },
+  { id: 'slouching', text: 'Sit up straight — upright posture commands respect!', icon: '🪑', priority: 1 },
+  { id: 'smile', text: 'Smile! Warmth and confidence go hand in hand.', icon: '😊', priority: 3 },
 ];
 
-export function selectCoachTips(result: GestureResult, elapsed: number): CoachTip[] {
+export function selectCoachTips(result: GestureResult, elapsed: number, isSmiling = true): CoachTip[] {
   const tips: CoachTip[] = [];
 
+  // Slouching is the highest-priority correction — add it first
+  if (result.isSlouching) tips.push(ALL_TIPS.find((t) => t.id === 'slouching')!);
   if (result.fidgeting) tips.push(ALL_TIPS.find((t) => t.id === 'no-face-touch')!);
   if (!result.handsAboveWaist) tips.push(ALL_TIPS.find((t) => t.id === 'above-waist')!);
   if (result.symmetry < 60) tips.push(ALL_TIPS.find((t) => t.id === 'symmetry')!);
@@ -262,6 +279,8 @@ export function selectCoachTips(result: GestureResult, elapsed: number): CoachTi
     tips.push(ALL_TIPS.find((t) => t.id === 'open-chest')!);
   if (result.gesture === 'STEEPLE')
     tips.push(ALL_TIPS.find((t) => t.id === 'steeple')!);
+  if (!isSmiling && elapsed > 8)
+    tips.push(ALL_TIPS.find((t) => t.id === 'smile')!);
 
   // Always show at least 2 tips
   while (tips.length < 2) {
@@ -306,7 +325,8 @@ export function drawGlowingSkeleton(
   landmarks: Point[],
   canvasWidth: number,
   canvasHeight: number,
-  impact: number
+  impact: number,
+  isSlouching = false
 ): void {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
@@ -315,14 +335,17 @@ export function drawGlowingSkeleton(
   ctx.translate(canvasWidth, 0);
   ctx.scale(-1, 1);
 
+  // Color encodes posture quality:
+  //   red   = slouching (bad)
+  //   yellow = low impact (could be better)
+  //   green  = good posture + high impact (great)
+  const lineColor = isSlouching ? '#ff4444' : impact >= 60 ? '#00ff88' : '#ffcc00';
   const glowStrength = 8 + (impact / 100) * 18;
-  const cyanColor = '#00f0ff';
-  const magentaColor = '#ff00cc';
 
   // ── Draw body connections ──
   ctx.shadowBlur = glowStrength;
-  ctx.shadowColor = cyanColor;
-  ctx.strokeStyle = cyanColor;
+  ctx.shadowColor = lineColor;
+  ctx.strokeStyle = lineColor;
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -341,8 +364,8 @@ export function drawGlowingSkeleton(
 
   // ── Draw arm connections thicker ──
   ctx.shadowBlur = glowStrength * 1.8;
-  ctx.shadowColor = cyanColor;
-  ctx.strokeStyle = cyanColor;
+  ctx.shadowColor = lineColor;
+  ctx.strokeStyle = lineColor;
   ctx.lineWidth = 4;
 
   for (const [a, b] of ARM_CONNECTIONS) {
@@ -357,10 +380,10 @@ export function drawGlowingSkeleton(
     ctx.stroke();
   }
 
-  // ── Draw landmark dots ──
+  // ── Draw landmark dots (match line color) ──
   ctx.shadowBlur = glowStrength * 2.5;
-  ctx.shadowColor = magentaColor;
-  ctx.fillStyle = magentaColor;
+  ctx.shadowColor = lineColor;
+  ctx.fillStyle = lineColor;
 
   for (let i = 0; i < landmarks.length; i++) {
     const lm = landmarks[i];
@@ -371,7 +394,7 @@ export function drawGlowingSkeleton(
     ctx.fill();
   }
 
-  // ── Wrist/hand glow dots (extra bright) ──
+  // ── Wrist/hand glow dots (always white — easy to track hands) ──
   ctx.shadowBlur = glowStrength * 3;
   ctx.shadowColor = '#ffffff';
   ctx.fillStyle = '#ffffff';
