@@ -276,7 +276,7 @@ export default function PracticeScreen() {
         debugTimerRef.current = now;
         const lmCount = result?.landmarks?.length ?? 0;
         setDebugLine(
-          `model:${stage} vr:${video.readyState} lm:${lmCount} ${video.videoWidth}×${video.videoHeight} | nose/sh:${state.noseAboveShoulder.toFixed(2)} sh/eye:${state.shoulderToEyeRatio.toFixed(1)} slouch:${state.isSlouching}`
+          `model:${stage} vr:${video.readyState} lm:${lmCount} ${video.videoWidth}×${video.videoHeight} | nose/sh:${state.noseAboveShoulder.toFixed(2)} sh/eye:${state.shoulderToEyeRatio.toFixed(1)} torsoZ:${state.torsoLeanZ.toFixed(2)} slouch:${state.isSlouching}`
         );
       }
 

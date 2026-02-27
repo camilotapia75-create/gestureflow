@@ -18,6 +18,7 @@ export interface SessionState {
   isSlouching: boolean;
   noseAboveShoulder: number;   // raw ratio for debug calibration
   shoulderToEyeRatio: number;  // shoulder width / inter-ocular; < 4.5 = rolled forward
+  torsoLeanZ: number;          // shoulder Z minus hip Z; negative = leaning forward
   smileCount: number;
   slouchCount: number;
   goodPostureSeconds: number;
@@ -38,6 +39,7 @@ const INITIAL_STATE: SessionState = {
   isSlouching: false,
   noseAboveShoulder: 0.5,
   shoulderToEyeRatio: 6.0,
+  torsoLeanZ: 0,
   smileCount: 0,
   slouchCount: 0,
   goodPostureSeconds: 0,
@@ -202,6 +204,7 @@ export function useSession(): SessionControls {
           isSlouching: result.isSlouching,
           noseAboveShoulder: result.noseAboveShoulder,
           shoulderToEyeRatio: result.shoulderToEyeRatio,
+          torsoLeanZ: result.torsoLeanZ,
           smileCount: smileCountRef.current,
           slouchCount: slouchCountRef.current,
           goodPostureSeconds: Math.round(goodPostureSecondsRef.current),

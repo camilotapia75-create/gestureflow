@@ -22,6 +22,7 @@ export interface GestureResult {
   isSlouching: boolean;
   noseAboveShoulder: number;   // raw ratio for debug/calibration
   shoulderToEyeRatio: number;  // shoulder width / inter-ocular distance; drops when shoulders roll forward
+  torsoLeanZ: number;          // shoulder Z minus hip Z; negative = leaning forward
 }
 
 export interface CoachTip {
@@ -160,7 +161,24 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   const shoulderToEyeRatio = eyeWidth > 0.015 ? shoulderWidth / eyeWidth : 6.0;
   const isShoulderRolled = eyeWidth > 0.015 && shoulderToEyeRatio < 4.5;
 
-  const isSlouching = isHeadDown || isShoulderRolled;
+  // Signal 3 · Forward torso lean (shoulder Z vs hip Z)
+  //   When you lean your chest forward the shoulders come closer to the camera
+  //   (Z decreases) while the hips stay anchored on the seat.
+  //   MediaPipe Z convention: smaller/more-negative = closer to camera.
+  //   Unlike nose-vs-shoulder Z (which is always negative due to anatomy),
+  //   shoulder-vs-hip Z is ≈ 0 when sitting upright, goes negative on forward lean.
+  //   Threshold -0.12 mirrors the sensitivity of the head-drop check.
+  const shoulderMidZ = isVisible(lS) && isVisible(rS)
+    ? ((lS.z ?? 0) + (rS.z ?? 0)) / 2
+    : 0;
+  const hipMidZ = isVisible(lH) && isVisible(rH)
+    ? ((lH.z ?? 0) + (rH.z ?? 0)) / 2
+    : shoulderMidZ; // fall back so the delta stays 0
+  const torsoLeanZ = shoulderMidZ - hipMidZ;
+  const isLeaningForward =
+    isVisible(lH) && isVisible(rH) && torsoLeanZ < -0.12;
+
+  const isSlouching = isHeadDown || isShoulderRolled || isLeaningForward;
 
   // ── Power zone: hands between shoulders and hips score highest (Navarro / TED research) ──
   const shoulderY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.35;
@@ -262,6 +280,7 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
     isSlouching,
     noseAboveShoulder: Math.round(noseAboveShoulder * 100) / 100,
     shoulderToEyeRatio: Math.round(shoulderToEyeRatio * 10) / 10,
+    torsoLeanZ: Math.round(torsoLeanZ * 100) / 100,
   };
 }
 
