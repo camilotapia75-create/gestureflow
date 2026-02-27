@@ -64,7 +64,14 @@ export function useFaceLandmarker() {
     };
   }, []);
 
-  // Returns the raw averaged blendshape score (0–1). Caller compares to threshold.
+  // Returns the raw blended smile score (0–1). Caller compares to threshold.
+  //
+  // mouthSmileLeft/Right tracks corner-of-mouth lift — accurate up close but
+  // unreliable at distance because the mouth is tiny in the frame.
+  // cheekSquintLeft/Right tracks the cheek raise that accompanies a genuine
+  // (Duchenne) smile and squints the lower eyelid — a larger, more visible
+  // movement that holds up much better when the face is small.
+  // Blending both (60/40) makes the score robust across distances.
   const detectSmile = useCallback(
     (video: HTMLVideoElement, timestamp: number): number => {
       if (!landmarkerRef.current || !isReady) return 0;
@@ -75,9 +82,13 @@ export function useFaceLandmarker() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const categories: { categoryName: string; score: number }[] =
           result.faceBlendshapes[0].categories;
-        const left = categories.find((c) => c.categoryName === 'mouthSmileLeft')?.score ?? 0;
-        const right = categories.find((c) => c.categoryName === 'mouthSmileRight')?.score ?? 0;
-        return (left + right) / 2;
+        const smileL  = categories.find((c) => c.categoryName === 'mouthSmileLeft')?.score  ?? 0;
+        const smileR  = categories.find((c) => c.categoryName === 'mouthSmileRight')?.score ?? 0;
+        const squintL = categories.find((c) => c.categoryName === 'cheekSquintLeft')?.score  ?? 0;
+        const squintR = categories.find((c) => c.categoryName === 'cheekSquintRight')?.score ?? 0;
+        const smileAvg  = (smileL  + smileR)  / 2;
+        const squintAvg = (squintL + squintR) / 2;
+        return smileAvg * 0.6 + squintAvg * 0.4;
       } catch {
         return 0;
       }

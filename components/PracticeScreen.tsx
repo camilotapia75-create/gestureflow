@@ -54,7 +54,7 @@ function TipBubble({ text, icon, delay = 0 }: { text: string; icon: string; dela
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -10, scale: 0.9 }}
       transition={{ duration: 0.45, delay, ease: [0.34, 1.56, 0.64, 1] }}
-      className="flex items-start gap-3 px-5 py-4 rounded-2xl max-w-sm"
+      className="flex items-start gap-3.5 px-6 py-5 rounded-2xl max-w-md"
       style={{
         background: 'rgba(8,8,22,0.92)',
         border: '1px solid rgba(0,240,255,0.22)',
@@ -62,9 +62,9 @@ function TipBubble({ text, icon, delay = 0 }: { text: string; icon: string; dela
         boxShadow: '0 4px 32px rgba(0,0,0,0.7)',
       }}
     >
-      <Lightbulb size={18} style={{ color: '#00f0ff', flexShrink: 0, marginTop: 2 }} />
-      <span className="text-sm text-gray-100 leading-snug font-medium">
-        <span className="mr-1.5 text-base">{icon}</span>
+      <Lightbulb size={20} style={{ color: '#00f0ff', flexShrink: 0, marginTop: 3 }} />
+      <span className="text-base text-gray-100 leading-snug font-medium">
+        <span className="mr-1.5 text-lg">{icon}</span>
         {text}
       </span>
     </motion.div>
@@ -292,7 +292,7 @@ export default function PracticeScreen() {
         debugTimerRef.current = now;
         const lmCount = result?.landmarks?.length ?? 0;
         setDebugLine(
-          `model:${stage} vr:${video.readyState} lm:${lmCount} ${video.videoWidth}×${video.videoHeight} | nose/sh:${state.noseAboveShoulder.toFixed(2)} sh/eye:${state.shoulderToEyeRatio.toFixed(1)} torsoZ:${state.torsoLeanZ.toFixed(2)} slouch:${state.isSlouching} | smile:${smileScoreRef.current.toFixed(2)}(>${SMILE_THRESHOLD})`
+          `model:${stage} vr:${video.readyState} lm:${lmCount} ${video.videoWidth}×${video.videoHeight} | nose/sh:${state.noseAboveShoulder.toFixed(2)} sh/eye:${state.shoulderToEyeRatio.toFixed(1)} torsoZ:${state.torsoLeanZ.toFixed(2)} slouch:${state.isSlouching} | smile(blend):${smileScoreRef.current.toFixed(2)}(>${SMILE_THRESHOLD})`
         );
       }
 
