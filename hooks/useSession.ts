@@ -16,7 +16,8 @@ export interface SessionState {
   tips: CoachTip[];
   confetti: boolean;
   isSlouching: boolean;
-  noseAboveShoulder: number; // raw ratio for debug calibration
+  noseAboveShoulder: number;   // raw ratio for debug calibration
+  shoulderToEyeRatio: number;  // shoulder width / inter-ocular; < 4.5 = rolled forward
   smileCount: number;
   slouchCount: number;
   goodPostureSeconds: number;
@@ -36,6 +37,7 @@ const INITIAL_STATE: SessionState = {
   confetti: false,
   isSlouching: false,
   noseAboveShoulder: 0.5,
+  shoulderToEyeRatio: 6.0,
   smileCount: 0,
   slouchCount: 0,
   goodPostureSeconds: 0,
@@ -199,6 +201,7 @@ export function useSession(): SessionControls {
           confetti: shouldConfetti,
           isSlouching: result.isSlouching,
           noseAboveShoulder: result.noseAboveShoulder,
+          shoulderToEyeRatio: result.shoulderToEyeRatio,
           smileCount: smileCountRef.current,
           slouchCount: slouchCountRef.current,
           goodPostureSeconds: Math.round(goodPostureSecondsRef.current),

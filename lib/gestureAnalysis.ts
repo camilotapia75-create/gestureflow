@@ -20,7 +20,8 @@ export interface GestureResult {
   fidgeting: boolean;
   isPowerMove: boolean;
   isSlouching: boolean;
-  noseAboveShoulder: number; // raw ratio — exposed for debug calibration
+  noseAboveShoulder: number;   // raw ratio for debug/calibration
+  shoulderToEyeRatio: number;  // shoulder width / inter-ocular distance; drops when shoulders roll forward
 }
 
 export interface CoachTip {
@@ -34,6 +35,8 @@ export interface CoachTip {
 
 export const LM = {
   NOSE: 0,
+  LEFT_EYE: 2,
+  RIGHT_EYE: 5,
   LEFT_SHOULDER: 11,
   RIGHT_SHOULDER: 12,
   LEFT_ELBOW: 13,
@@ -94,6 +97,8 @@ function armQuality(angle: number): number {
 // ─── Core Analysis ────────────────────────────────────────────────────────
 
 export function analyzeGesture(landmarks: Point[]): GestureResult {
+  const lEye = landmarks[LM.LEFT_EYE];
+  const rEye = landmarks[LM.RIGHT_EYE];
   const lS = landmarks[LM.LEFT_SHOULDER];
   const rS = landmarks[LM.RIGHT_SHOULDER];
   const lE = landmarks[LM.LEFT_ELBOW];
@@ -130,19 +135,32 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   const handsAboveWaist =
     (!isVisible(lW) || lW.y < hipY) && (!isVisible(rW) || rW.y < hipY);
 
-  // ── Slouching: nose should be clearly above shoulder level ──
-  // Normalize by shoulder width so the check is distance-invariant.
-  // Threshold 0.30: slightly stricter than original 0.25 but won't fire for normal posture.
-  // NOTE: Z-axis forward-head check was removed — for a frontal webcam the nose is
-  // anatomically always slightly in front of the shoulders, so the Z delta is negative
-  // even with perfect posture and produces constant false positives.
+  // ── Slouching — two independent, camera-distance-invariant signals ─────────
+  //
+  // Signal 1 · Head-drop (nose-above-shoulder ratio)
+  //   When the head drops forward/down, the nose Y approaches shoulder Y.
+  //   Normalizing by shoulder width makes it invariant to camera distance.
+  //   Threshold 0.45: catches moderate forward-head, not just severe drop.
   const shoulderMidY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.4;
   const noseAboveShoulder =
     isVisible(nose) && isVisible(lS) && isVisible(rS) && shoulderWidth > 0
       ? (shoulderMidY - nose.y) / shoulderWidth
-      : 0.5; // assume good posture if landmarks not visible
+      : 0.5;
+  const isHeadDown = noseAboveShoulder < 0.45;
 
-  const isSlouching = noseAboveShoulder < 0.30;
+  // Signal 2 · Shoulder roll (width relative to inter-ocular distance)
+  //   As the chest caves and shoulders roll forward, the apparent shoulder width
+  //   in the image narrows while the head (eye-to-eye) stays constant.
+  //   Both measurements scale identically with camera distance → true invariance.
+  //   Real-world ratio upright: ~6–7 ×. Threshold 4.5 catches moderate roll.
+  const eyeWidth =
+    isVisible(lEye, 0.5) && isVisible(rEye, 0.5)
+      ? Math.abs(rEye.x - lEye.x)
+      : 0;
+  const shoulderToEyeRatio = eyeWidth > 0.015 ? shoulderWidth / eyeWidth : 6.0;
+  const isShoulderRolled = eyeWidth > 0.015 && shoulderToEyeRatio < 4.5;
+
+  const isSlouching = isHeadDown || isShoulderRolled;
 
   // ── Power zone: hands between shoulders and hips score highest (Navarro / TED research) ──
   const shoulderY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.35;
@@ -243,6 +261,7 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
     isPowerMove,
     isSlouching,
     noseAboveShoulder: Math.round(noseAboveShoulder * 100) / 100,
+    shoulderToEyeRatio: Math.round(shoulderToEyeRatio * 10) / 10,
   };
 }
 
