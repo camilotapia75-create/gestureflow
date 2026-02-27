@@ -164,7 +164,9 @@ export default function PracticeScreen() {
   const [isSmiling, setIsSmiling] = useState(false);
   const isSmilingRef = useRef(false);
   const lastFaceDetectRef = useRef(0);
+  const SMILE_THRESHOLD = 0.28;
   const lastSmiledAtRef = useRef(-1); // -1 until first face detection runs
+  const smileScoreRef = useRef(0);
   const showSmileReminderRef = useRef(false);
   const [showSmileReminder, setShowSmileReminder] = useState(false);
   // Stable refs so the RAF loop doesn't need to restart on every render.
@@ -260,7 +262,9 @@ export default function PracticeScreen() {
         // Smile detection at ~7fps (lightweight polling)
         if (faceReadyRef.current && now - lastFaceDetectRef.current > 150) {
           lastFaceDetectRef.current = now;
-          const smiling = detectSmileRef.current(video, timestamp);
+          const score = detectSmileRef.current(video, timestamp);
+          smileScoreRef.current = score;
+          const smiling = score > SMILE_THRESHOLD;
           if (smiling !== isSmilingRef.current) {
             isSmilingRef.current = smiling;
             setIsSmiling(smiling);
@@ -288,7 +292,7 @@ export default function PracticeScreen() {
         debugTimerRef.current = now;
         const lmCount = result?.landmarks?.length ?? 0;
         setDebugLine(
-          `model:${stage} vr:${video.readyState} lm:${lmCount} ${video.videoWidth}×${video.videoHeight} | nose/sh:${state.noseAboveShoulder.toFixed(2)} sh/eye:${state.shoulderToEyeRatio.toFixed(1)} torsoZ:${state.torsoLeanZ.toFixed(2)} slouch:${state.isSlouching}`
+          `model:${stage} vr:${video.readyState} lm:${lmCount} ${video.videoWidth}×${video.videoHeight} | nose/sh:${state.noseAboveShoulder.toFixed(2)} sh/eye:${state.shoulderToEyeRatio.toFixed(1)} torsoZ:${state.torsoLeanZ.toFixed(2)} slouch:${state.isSlouching} | smile:${smileScoreRef.current.toFixed(2)}(>${SMILE_THRESHOLD})`
         );
       }
 

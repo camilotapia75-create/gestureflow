@@ -6,8 +6,6 @@ const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/w
 const FACE_MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
-const SMILE_THRESHOLD = 0.35;
-
 export function useFaceLandmarker() {
   const [isReady, setIsReady] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,9 +29,9 @@ export function useFaceLandmarker() {
             runningMode: 'VIDEO',
             numFaces: 1,
             outputFaceBlendshapes: true,
-            minFaceDetectionConfidence: 0.5,
-            minFacePresenceConfidence: 0.5,
-            minTrackingConfidence: 0.5,
+            minFaceDetectionConfidence: 0.3,
+            minFacePresenceConfidence: 0.3,
+            minTrackingConfidence: 0.3,
           });
         } catch {
           if (cancelled) return;
@@ -42,9 +40,9 @@ export function useFaceLandmarker() {
             runningMode: 'VIDEO',
             numFaces: 1,
             outputFaceBlendshapes: true,
-            minFaceDetectionConfidence: 0.5,
-            minFacePresenceConfidence: 0.5,
-            minTrackingConfidence: 0.5,
+            minFaceDetectionConfidence: 0.3,
+            minFacePresenceConfidence: 0.3,
+            minTrackingConfidence: 0.3,
           });
         }
 
@@ -66,21 +64,22 @@ export function useFaceLandmarker() {
     };
   }, []);
 
+  // Returns the raw averaged blendshape score (0–1). Caller compares to threshold.
   const detectSmile = useCallback(
-    (video: HTMLVideoElement, timestamp: number): boolean => {
-      if (!landmarkerRef.current || !isReady) return false;
+    (video: HTMLVideoElement, timestamp: number): number => {
+      if (!landmarkerRef.current || !isReady) return 0;
       try {
         const result = landmarkerRef.current.detectForVideo(video, timestamp);
-        if (!result.faceBlendshapes || result.faceBlendshapes.length === 0) return false;
+        if (!result.faceBlendshapes || result.faceBlendshapes.length === 0) return 0;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const categories: { categoryName: string; score: number }[] =
           result.faceBlendshapes[0].categories;
         const left = categories.find((c) => c.categoryName === 'mouthSmileLeft')?.score ?? 0;
         const right = categories.find((c) => c.categoryName === 'mouthSmileRight')?.score ?? 0;
-        return (left + right) / 2 > SMILE_THRESHOLD;
+        return (left + right) / 2;
       } catch {
-        return false;
+        return 0;
       }
     },
     [isReady]
