@@ -151,9 +151,10 @@ export default function PracticeScreen() {
   const [sessionEnded, setSessionEnded] = useState<{
     duration: number;
     gestures: number;
-    averageImpact: number;
-    peakImpact: number;
     bestStreak: number;
+    smileCount: number;
+    slouchCount: number;
+    goodPostureSeconds: number;
   } | null>(null);
 
   const { stage, progress, error: modelError, isReady, detect } = usePoseLandmarker();
@@ -163,9 +164,13 @@ export default function PracticeScreen() {
   const [isSmiling, setIsSmiling] = useState(false);
   const isSmilingRef = useRef(false);
   const lastFaceDetectRef = useRef(0);
-  // Stable refs so the RAF loop doesn't need to restart when face model loads
+  // Stable refs so the RAF loop doesn't need to restart on every render.
+  // React state (impact, isSlouching, etc.) is stale inside the effect closure —
+  // these refs are kept in sync during render and read from the loop instead.
   const faceReadyRef = useRef(false);
   const detectSmileRef = useRef(detectSmile);
+  const impactRef = useRef(0);
+  const isSlouchingRef = useRef(false);
 
   const nullStreakRef = useRef(0);
   const debugTimerRef = useRef(0);
@@ -260,7 +265,7 @@ export default function PracticeScreen() {
         }
 
         processPose(lms, isSmilingRef.current);
-        drawGlowingSkeleton(ctx, lms, canvas.width, canvas.height, state.impact, state.isSlouching);
+        drawGlowingSkeleton(ctx, lms, canvas.width, canvas.height, impactRef.current, isSlouchingRef.current);
       } else {
         nullStreakRef.current += 1;
         if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -306,12 +311,18 @@ export default function PracticeScreen() {
     const ended = {
       duration: state.elapsed,
       gestures: state.gestures,
-      averageImpact: state.averageImpact || state.impact,
-      peakImpact: state.peakImpact,
       bestStreak: state.bestStreak,
+      smileCount: state.smileCount,
+      slouchCount: state.slouchCount,
+      goodPostureSeconds: state.goodPostureSeconds,
     };
 
-    recordSession({ ...ended, impact: ended.averageImpact, streak: ended.bestStreak });
+    recordSession({
+      ...ended,
+      impact: 0,
+      streak: ended.bestStreak,
+      peakImpact: state.peakImpact,
+    });
     setSessionEnded(ended);
     setShowSummary(true);
   }, [state, stop]);
@@ -327,6 +338,8 @@ export default function PracticeScreen() {
   // Keep stable refs in sync so the RAF loop always sees the latest values
   faceReadyRef.current = faceReady;
   detectSmileRef.current = detectSmile;
+  impactRef.current = state.impact;
+  isSlouchingRef.current = state.isSlouching;
 
   const gestureColor = GESTURE_COLORS[state.gesture] ?? '#00f0ff';
 
@@ -619,7 +632,7 @@ export default function PracticeScreen() {
           setShowSummary(false);
           router.push('/');
         }}
-        stats={sessionEnded ?? { duration: 0, gestures: 0, averageImpact: 0, peakImpact: 0, bestStreak: 0 }}
+        stats={sessionEnded ?? { duration: 0, gestures: 0, bestStreak: 0, smileCount: 0, slouchCount: 0, goodPostureSeconds: 0 }}
       />
     </div>
   );

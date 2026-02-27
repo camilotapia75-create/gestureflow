@@ -16,6 +16,9 @@ export interface SessionState {
   tips: CoachTip[];
   confetti: boolean;
   isSlouching: boolean;
+  smileCount: number;
+  slouchCount: number;
+  goodPostureSeconds: number;
 }
 
 const INITIAL_STATE: SessionState = {
@@ -31,6 +34,9 @@ const INITIAL_STATE: SessionState = {
   tips: [],
   confetti: false,
   isSlouching: false,
+  smileCount: 0,
+  slouchCount: 0,
+  goodPostureSeconds: 0,
 };
 
 export interface SessionControls {
@@ -70,6 +76,13 @@ export function useSession(): SessionControls {
   // Confetti debounce
   const confettiFiredRef = useRef(false);
 
+  // Positive-behaviour counters
+  const smileCountRef = useRef(0);
+  const slouchCountRef = useRef(0);
+  const goodPostureSecondsRef = useRef(0);
+  const lastSmilingRef = useRef(false);
+  const lastSlouchingRef = useRef(false);
+
   const start = useCallback(() => {
     activeRef.current = true;
     startTimeRef.current = Date.now();
@@ -82,6 +95,11 @@ export function useSession(): SessionControls {
     peakImpactRef.current = 0;
     highImpactStartRef.current = 0;
     confettiFiredRef.current = false;
+    smileCountRef.current = 0;
+    slouchCountRef.current = 0;
+    goodPostureSecondsRef.current = 0;
+    lastSmilingRef.current = false;
+    lastSlouchingRef.current = false;
 
     setState({ ...INITIAL_STATE, isActive: true });
 
@@ -106,6 +124,13 @@ export function useSession(): SessionControls {
       const now = Date.now();
       const result = analyzeGesture(landmarks);
       const elapsed = (now - startTimeRef.current) / 1000;
+
+      // ── Per-frame transition counters ──
+      if (isSmiling && !lastSmilingRef.current) smileCountRef.current += 1;
+      lastSmilingRef.current = isSmiling;
+
+      if (result.isSlouching && !lastSlouchingRef.current) slouchCountRef.current += 1;
+      lastSlouchingRef.current = result.isSlouching;
 
       // ── Impact smoothing (300ms window) ──
       impactBufferRef.current.push(result.impact);
@@ -148,6 +173,11 @@ export function useSession(): SessionControls {
           currentStreakRef.current = 0;
         }
 
+        // ── Good posture time: accumulate ~0.3s per 300ms tick when posture is good ──
+        if (roundedImpact >= 60 && !result.isSlouching) {
+          goodPostureSecondsRef.current += 0.3;
+        }
+
         // ── Confetti at 95+ ──
         const shouldConfetti = roundedImpact >= 95 && !confettiFiredRef.current;
         if (shouldConfetti) confettiFiredRef.current = true;
@@ -166,6 +196,9 @@ export function useSession(): SessionControls {
           tips,
           confetti: shouldConfetti,
           isSlouching: result.isSlouching,
+          smileCount: smileCountRef.current,
+          slouchCount: slouchCountRef.current,
+          goodPostureSeconds: Math.round(goodPostureSecondsRef.current),
         }));
       }
     },

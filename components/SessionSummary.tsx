@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Star, Zap, Clock, Flame, TrendingUp, Award, type LucideIcon } from 'lucide-react';
+import { X, Zap, Clock, Flame, TrendingUp, Award, type LucideIcon } from 'lucide-react';
 import { formatTime } from '@/lib/storage';
 
 interface Props {
@@ -10,42 +10,34 @@ interface Props {
   stats: {
     duration: number;
     gestures: number;
-    averageImpact: number;
-    peakImpact: number;
     bestStreak: number;
+    smileCount: number;
+    slouchCount: number;
+    goodPostureSeconds: number;
   };
 }
 
-function ScoreRing({ value, label, color }: { value: number; label: string; color: string }) {
-  const radius = 36;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (value / 100) * circumference;
-
+// Big three number boxes shown at the top of the summary
+function QuickStat({
+  emoji,
+  value,
+  label,
+  color,
+}: {
+  emoji: string;
+  value: string;
+  label: string;
+  color: string;
+}) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative w-24 h-24">
-        {/* Background ring */}
-        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 88 88">
-          <circle cx="44" cy="44" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
-          <circle
-            cx="44"
-            cy="44"
-            r={radius}
-            fill="none"
-            stroke={color}
-            strokeWidth="6"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            style={{ filter: `drop-shadow(0 0 6px ${color})`, transition: 'stroke-dashoffset 1s ease' }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-black text-white leading-none">{value}</span>
-          <span className="text-[10px] text-gray-400 font-medium">/ 100</span>
-        </div>
-      </div>
-      <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">{label}</span>
+    <div className="flex flex-col items-center gap-1 flex-1 py-1">
+      <span className="text-2xl leading-none mb-0.5">{emoji}</span>
+      <span className="text-2xl font-black leading-none" style={{ color }}>
+        {value}
+      </span>
+      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center">
+        {label}
+      </span>
     </div>
   );
 }
@@ -67,7 +59,10 @@ function StatRow({
       style={{ background: 'rgba(20,20,45,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}
     >
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}18` }}>
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{ background: `${color}18` }}
+        >
           <Icon size={18} style={{ color }} />
         </div>
         <span className="text-sm text-gray-300 font-medium">{label}</span>
@@ -77,17 +72,22 @@ function StatRow({
   );
 }
 
-function getGrade(impact: number): { grade: string; label: string; color: string } {
-  if (impact >= 90) return { grade: 'S', label: 'World Class', color: '#00f0ff' };
-  if (impact >= 80) return { grade: 'A', label: 'Excellent', color: '#7b2fff' };
-  if (impact >= 65) return { grade: 'B', label: 'Good', color: '#ff00cc' };
-  if (impact >= 50) return { grade: 'C', label: 'Keep Practicing', color: '#ffaa00' };
-  return { grade: 'D', label: 'Needs Work', color: '#888' };
+// Grade is now based on good-posture percentage — a concrete, learnable target
+function getGrade(posturePercent: number): { grade: string; label: string; color: string } {
+  if (posturePercent >= 80) return { grade: 'S', label: 'Excellent Form', color: '#00f0ff' };
+  if (posturePercent >= 65) return { grade: 'A', label: 'Great Posture', color: '#7b2fff' };
+  if (posturePercent >= 50) return { grade: 'B', label: 'Good Work', color: '#ff00cc' };
+  if (posturePercent >= 30) return { grade: 'C', label: 'Keep Practicing', color: '#ffaa00' };
+  return { grade: 'D', label: 'Sit Up & Smile!', color: '#888' };
 }
 
 export default function SessionSummary({ open, onClose, stats }: Props) {
-  const { duration, gestures, averageImpact, peakImpact, bestStreak } = stats;
-  const grade = getGrade(averageImpact);
+  const { duration, gestures, bestStreak, smileCount, slouchCount, goodPostureSeconds } = stats;
+
+  const goodPosturePercent =
+    duration > 0 ? Math.min(100, Math.round((goodPostureSeconds / duration) * 100)) : 0;
+
+  const grade = getGrade(goodPosturePercent);
 
   return (
     <AnimatePresence>
@@ -142,15 +142,14 @@ export default function SessionSummary({ open, onClose, stats }: Props) {
                 </button>
               </div>
 
-              {/* Grade + Score rings */}
+              {/* Grade card */}
               <div
-                className="rounded-2xl p-5 mb-5 flex items-center gap-6"
+                className="rounded-2xl p-5 mb-4 flex items-center gap-6"
                 style={{
                   background: `linear-gradient(135deg, ${grade.color}10, ${grade.color}05)`,
                   border: `1px solid ${grade.color}30`,
                 }}
               >
-                {/* Grade circle */}
                 <div
                   className="w-20 h-20 rounded-2xl flex flex-col items-center justify-center flex-shrink-0"
                   style={{
@@ -166,42 +165,94 @@ export default function SessionSummary({ open, onClose, stats }: Props) {
                 <div>
                   <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Your Grade</p>
                   <p className="text-xl font-black text-white">{grade.label}</p>
-                  <p className="text-sm text-gray-400 mt-1">Avg impact: {averageImpact}%</p>
+                  <p className="text-sm mt-1" style={{ color: grade.color }}>
+                    Good posture {goodPosturePercent}% of session
+                  </p>
                 </div>
               </div>
 
-              {/* Score rings */}
-              <div className="flex justify-around mb-6">
-                <ScoreRing value={averageImpact} label="Avg Impact" color="#00f0ff" />
-                <ScoreRing value={Math.min(100, peakImpact)} label="Peak" color="#ff00cc" />
-                <ScoreRing value={Math.min(100, bestStreak * 3)} label="Streak" color="#7b2fff" />
+              {/* Big 3 quick stats */}
+              <div
+                className="flex rounded-2xl mb-5 overflow-hidden"
+                style={{ background: 'rgba(20,20,45,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                <QuickStat emoji="🏆" value={`${gestures}`} label="Good Moves" color="#00ff88" />
+                <div className="w-px self-stretch bg-white/10" />
+                <QuickStat emoji="😊" value={`${smileCount}`} label="Smiles" color="#ffcc00" />
+                <div className="w-px self-stretch bg-white/10" />
+                <QuickStat emoji="🧍" value={`${goodPosturePercent}%`} label="Good Posture" color="#00f0ff" />
               </div>
 
-              {/* Stat rows */}
+              {/* Detail rows */}
               <div className="space-y-2 mb-6">
-                <StatRow icon={Flame} label="Gestures Counted" value={`${gestures}`} color="#ff6600" />
-                <StatRow icon={Clock} label="Session Duration" value={formatTime(duration)} color="#00f0ff" />
+                <StatRow
+                  icon={TrendingUp}
+                  label="Good Posture Time"
+                  value={formatTime(goodPostureSeconds)}
+                  color="#00ff88"
+                />
+                <StatRow
+                  icon={Flame}
+                  label="Slouch Alerts"
+                  value={slouchCount === 0 ? '0 ✓' : `${slouchCount}`}
+                  color={slouchCount === 0 ? '#00ff88' : '#ff4444'}
+                />
                 <StatRow icon={Zap} label="Best Streak" value={`${bestStreak}s`} color="#7b2fff" />
-                <StatRow icon={TrendingUp} label="Peak Impact" value={`${peakImpact}%`} color="#ff00cc" />
-                <StatRow icon={Star} label="Average Impact" value={`${averageImpact}%`} color="#ffaa00" />
+                <StatRow icon={Clock} label="Session Duration" value={formatTime(duration)} color="#555577" />
               </div>
 
-              {/* Achievement */}
-              {peakImpact >= 95 && (
+              {/* Achievement badges */}
+              {smileCount >= 5 && (
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, type: 'spring' }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl mb-3"
+                  style={{
+                    background: 'rgba(255,204,0,0.1)',
+                    border: '1px solid rgba(255,204,0,0.3)',
+                  }}
+                >
+                  <span className="text-2xl">😊</span>
+                  <div>
+                    <p className="font-bold text-white text-sm">Great Smile Game!</p>
+                    <p className="text-xs text-gray-400">Smiling makes you more persuasive</p>
+                  </div>
+                </motion.div>
+              )}
+              {slouchCount === 0 && duration >= 30 && (
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.4, type: 'spring' }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl mb-4"
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl mb-3"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(0,240,255,0.15), rgba(255,0,204,0.1))',
-                    border: '1px solid rgba(0,240,255,0.3)',
+                    background: 'rgba(0,255,136,0.08)',
+                    border: '1px solid rgba(0,255,136,0.25)',
                   }}
                 >
-                  <Award size={24} style={{ color: '#00f0ff' }} />
+                  <Award size={24} style={{ color: '#00ff88' }} />
                   <div>
-                    <p className="font-bold text-white text-sm">Peak Performer! 🎉</p>
-                    <p className="text-xs text-gray-400">You hit 95%+ impact — world-class gestures</p>
+                    <p className="font-bold text-white text-sm">Perfect Posture! 🪑</p>
+                    <p className="text-xs text-gray-400">No slouching detected all session</p>
+                  </div>
+                </motion.div>
+              )}
+              {goodPosturePercent >= 80 && (
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.5, type: 'spring' }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl mb-4"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(0,240,255,0.12), rgba(123,47,255,0.08))',
+                    border: '1px solid rgba(0,240,255,0.25)',
+                  }}
+                >
+                  <span className="text-2xl">🌟</span>
+                  <div>
+                    <p className="font-bold text-white text-sm">Commanding Presence!</p>
+                    <p className="text-xs text-gray-400">80%+ of session with great posture</p>
                   </div>
                 </motion.div>
               )}

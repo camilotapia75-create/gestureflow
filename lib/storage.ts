@@ -3,9 +3,12 @@ export interface SessionRecord {
   date: string;
   duration: number; // seconds
   gestures: number;
-  impact: number; // average
+  impact: number; // average (kept for compat)
   streak: number;
   peakImpact: number;
+  smileCount: number;
+  slouchCount: number;
+  goodPostureSeconds: number;
 }
 
 export interface StoredStats {
