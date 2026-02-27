@@ -164,6 +164,9 @@ export default function PracticeScreen() {
   const [isSmiling, setIsSmiling] = useState(false);
   const isSmilingRef = useRef(false);
   const lastFaceDetectRef = useRef(0);
+  const lastSmiledAtRef = useRef(-1); // -1 until first face detection runs
+  const showSmileReminderRef = useRef(false);
+  const [showSmileReminder, setShowSmileReminder] = useState(false);
   // Stable refs so the RAF loop doesn't need to restart on every render.
   // React state (impact, isSlouching, etc.) is stale inside the effect closure —
   // these refs are kept in sync during render and read from the loop instead.
@@ -261,6 +264,15 @@ export default function PracticeScreen() {
           if (smiling !== isSmilingRef.current) {
             isSmilingRef.current = smiling;
             setIsSmiling(smiling);
+          }
+          // Initialise timer on first detection so the clock starts from when
+          // the face model first locks on, not from component mount.
+          if (lastSmiledAtRef.current === -1) lastSmiledAtRef.current = now;
+          if (smiling) lastSmiledAtRef.current = now;
+          const needsReminder = !smiling && now - lastSmiledAtRef.current > 15000;
+          if (needsReminder !== showSmileReminderRef.current) {
+            showSmileReminderRef.current = needsReminder;
+            setShowSmileReminder(needsReminder);
           }
         }
 
@@ -558,16 +570,61 @@ export default function PracticeScreen() {
             className="absolute top-20 left-4 z-20"
           >
             <div
-              className="px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-black transition-all duration-300"
+              className="px-5 py-3 rounded-full flex items-center gap-2 text-sm font-black transition-all duration-300"
               style={{
                 background: isSmiling ? 'rgba(0,255,136,0.15)' : 'rgba(30,30,50,0.6)',
-                border: `1px solid ${isSmiling ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                border: `1.5px solid ${isSmiling ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)'}`,
                 color: isSmiling ? '#00ff88' : '#666688',
-                boxShadow: isSmiling ? '0 0 12px rgba(0,255,136,0.3)' : 'none',
+                boxShadow: isSmiling ? '0 0 18px rgba(0,255,136,0.35)' : 'none',
               }}
             >
-              {isSmiling ? '😊' : '😐'} {isSmiling ? 'Smiling!' : 'Smile'}
+              <span className="text-xl leading-none">{isSmiling ? '😊' : '😐'}</span>
+              {isSmiling ? 'Smiling!' : 'Smile'}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── SMILE REMINDER — gentle nudge after 15 s without smiling ── */}
+      <AnimatePresence>
+        {showSmileReminder && (
+          <motion.div
+            key="smile-reminder"
+            initial={{ opacity: 0, scale: 0.8, y: -16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.88, y: -8 }}
+            transition={{ duration: 0.28, ease: [0.34, 1.56, 0.64, 1] }}
+            className="absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+            style={{ top: '28%' }}
+          >
+            <motion.div
+              animate={{
+                boxShadow: [
+                  '0 0 24px rgba(255,204,0,0.35)',
+                  '0 0 48px rgba(255,204,0,0.65)',
+                  '0 0 24px rgba(255,204,0,0.35)',
+                ],
+              }}
+              transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+              className="flex flex-col items-center gap-2 px-10 py-5 rounded-3xl"
+              style={{
+                background: 'rgba(120,90,0,0.35)',
+                border: '2px solid rgba(255,204,0,0.8)',
+                backdropFilter: 'blur(18px)',
+                minWidth: '220px',
+              }}
+            >
+              <span className="text-5xl leading-none">😊</span>
+              <span
+                className="text-3xl font-black tracking-widest uppercase leading-none"
+                style={{ color: '#ffcc00' }}
+              >
+                Smile!
+              </span>
+              <span className="text-sm font-medium text-center" style={{ color: 'rgba(255,230,150,0.85)' }}>
+                Warmth builds connection
+              </span>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
