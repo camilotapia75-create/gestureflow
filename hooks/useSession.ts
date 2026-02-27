@@ -88,6 +88,11 @@ export function useSession(): SessionControls {
   const goodPostureSecondsRef = useRef(0);
   const lastSmilingRef = useRef(false);
   const lastSlouchingRef = useRef(false);
+  // Tips are throttled: only replace after MIN_TIP_HOLD_MS unless the slouch
+  // tip appears/disappears (high-priority, always immediate).
+  const MIN_TIP_HOLD_MS = 8000;
+  const lastTipUpdateRef = useRef(0);
+  const shownTipsRef = useRef<CoachTip[]>([]);
 
   const start = useCallback(() => {
     activeRef.current = true;
@@ -106,6 +111,8 @@ export function useSession(): SessionControls {
     goodPostureSecondsRef.current = 0;
     lastSmilingRef.current = false;
     lastSlouchingRef.current = false;
+    lastTipUpdateRef.current = 0;
+    shownTipsRef.current = [];
 
     setState({ ...INITIAL_STATE, isActive: true });
 
@@ -188,7 +195,20 @@ export function useSession(): SessionControls {
         const shouldConfetti = roundedImpact >= 95 && !confettiFiredRef.current;
         if (shouldConfetti) confettiFiredRef.current = true;
 
-        const tips = selectCoachTips(result, elapsed, isSmiling);
+        const candidateTips = selectCoachTips(result, elapsed, isSmiling);
+        // Allow immediate swap only when the slouch tip appears/disappears;
+        // all other changes are held for MIN_TIP_HOLD_MS so users can read them.
+        const slouchFlipped =
+          candidateTips.some((t) => t.id === 'slouch') !==
+          shownTipsRef.current.some((t) => t.id === 'slouch');
+        const tipIdsMatch =
+          candidateTips.map((t) => t.id).join() ===
+          shownTipsRef.current.map((t) => t.id).join();
+        if (slouchFlipped || (!tipIdsMatch && now - lastTipUpdateRef.current >= MIN_TIP_HOLD_MS)) {
+          shownTipsRef.current = candidateTips;
+          lastTipUpdateRef.current = now;
+        }
+        const tips = shownTipsRef.current;
 
         setState((prev) => ({
           ...prev,

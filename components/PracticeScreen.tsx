@@ -53,18 +53,18 @@ function TipBubble({ text, icon, delay = 0 }: { text: string; icon: string; dela
       initial={{ opacity: 0, y: 10, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -10, scale: 0.9 }}
-      transition={{ duration: 0.35, delay, ease: [0.34, 1.56, 0.64, 1] }}
-      className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-2xl max-w-xs"
+      transition={{ duration: 0.45, delay, ease: [0.34, 1.56, 0.64, 1] }}
+      className="flex items-start gap-3 px-5 py-4 rounded-2xl max-w-sm"
       style={{
-        background: 'rgba(8,8,22,0.88)',
-        border: '1px solid rgba(0,240,255,0.18)',
+        background: 'rgba(8,8,22,0.92)',
+        border: '1px solid rgba(0,240,255,0.22)',
         backdropFilter: 'blur(16px)',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
+        boxShadow: '0 4px 32px rgba(0,0,0,0.7)',
       }}
     >
-      <Lightbulb size={14} style={{ color: '#00f0ff', flexShrink: 0, marginTop: 1 }} />
-      <span className="text-xs text-gray-200 leading-snug font-medium">
-        <span className="mr-1">{icon}</span>
+      <Lightbulb size={18} style={{ color: '#00f0ff', flexShrink: 0, marginTop: 2 }} />
+      <span className="text-sm text-gray-100 leading-snug font-medium">
+        <span className="mr-1.5 text-base">{icon}</span>
         {text}
       </span>
     </motion.div>
@@ -501,7 +501,7 @@ export default function PracticeScreen() {
           {(
             [
               { color: '#00ff88', label: 'Great form' },
-              { color: '#ffcc00', label: 'Extend arms' },
+              { color: '#ffcc00', label: 'Neutral (neutral is okay!)' },
               { color: '#ff4444', label: 'Slouching!' },
             ] as const
           ).map(({ color, label }) => (
