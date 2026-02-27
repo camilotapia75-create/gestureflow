@@ -136,24 +136,19 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   const handsAboveWaist =
     (!isVisible(lW) || lW.y < hipY) && (!isVisible(rW) || rW.y < hipY);
 
-  // ── Slouching — two independent, camera-distance-invariant signals ─────────
+  // ── Slouching — forward-lean only (leaning backward is fine) ──────────────
   //
-  // Signal 1 · Head-drop (nose-above-shoulder ratio)
-  //   When the head drops forward/down, the nose Y approaches shoulder Y.
-  //   Normalizing by shoulder width makes it invariant to camera distance.
-  //   Threshold 0.45: catches moderate forward-head, not just severe drop.
+  // Signal 1 · Shoulder roll (width relative to inter-ocular distance)
+  //   As the chest caves and shoulders roll forward, the apparent shoulder width
+  //   narrows while the eye-to-eye distance stays constant — truly invariant to
+  //   camera distance. Upright: ~6–7×. Threshold 4.5 catches moderate roll.
+  //   NOTE: nose-above-shoulder (head-drop) was intentionally removed because
+  //   it also fires when leaning backward, which is acceptable posture.
   const shoulderMidY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.4;
   const noseAboveShoulder =
     isVisible(nose) && isVisible(lS) && isVisible(rS) && shoulderWidth > 0
       ? (shoulderMidY - nose.y) / shoulderWidth
-      : 0.5;
-  const isHeadDown = noseAboveShoulder < 0.45;
-
-  // Signal 2 · Shoulder roll (width relative to inter-ocular distance)
-  //   As the chest caves and shoulders roll forward, the apparent shoulder width
-  //   in the image narrows while the head (eye-to-eye) stays constant.
-  //   Both measurements scale identically with camera distance → true invariance.
-  //   Real-world ratio upright: ~6–7 ×. Threshold 4.5 catches moderate roll.
+      : 0.5; // kept for debug output only
   const eyeWidth =
     isVisible(lEye, 0.5) && isVisible(rEye, 0.5)
       ? Math.abs(rEye.x - lEye.x)
@@ -161,24 +156,22 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
   const shoulderToEyeRatio = eyeWidth > 0.015 ? shoulderWidth / eyeWidth : 6.0;
   const isShoulderRolled = eyeWidth > 0.015 && shoulderToEyeRatio < 4.5;
 
-  // Signal 3 · Forward torso lean (shoulder Z vs hip Z)
-  //   When you lean your chest forward the shoulders come closer to the camera
-  //   (Z decreases) while the hips stay anchored on the seat.
-  //   MediaPipe Z convention: smaller/more-negative = closer to camera.
-  //   Unlike nose-vs-shoulder Z (which is always negative due to anatomy),
-  //   shoulder-vs-hip Z is ≈ 0 when sitting upright, goes negative on forward lean.
-  //   Threshold -0.12 mirrors the sensitivity of the head-drop check.
+  // Signal 2 · Forward torso lean (shoulder Z vs hip Z)
+  //   When you lean your chest forward, shoulders come closer to the camera
+  //   (Z decreases) while hips stay anchored on the seat.
+  //   MediaPipe Z: smaller/more-negative = closer to camera.
+  //   shoulder-vs-hip Z is ≈ 0 when upright, goes negative on forward lean.
   const shoulderMidZ = isVisible(lS) && isVisible(rS)
     ? ((lS.z ?? 0) + (rS.z ?? 0)) / 2
     : 0;
   const hipMidZ = isVisible(lH) && isVisible(rH)
     ? ((lH.z ?? 0) + (rH.z ?? 0)) / 2
-    : shoulderMidZ; // fall back so the delta stays 0
+    : shoulderMidZ;
   const torsoLeanZ = shoulderMidZ - hipMidZ;
   const isLeaningForward =
     isVisible(lH) && isVisible(rH) && torsoLeanZ < -0.12;
 
-  const isSlouching = isHeadDown || isShoulderRolled || isLeaningForward;
+  const isSlouching = isShoulderRolled || isLeaningForward;
 
   // ── Power zone: hands between shoulders and hips score highest (Navarro / TED research) ──
   const shoulderY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.35;
