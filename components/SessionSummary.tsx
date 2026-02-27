@@ -1,12 +1,13 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, Clock, Flame, TrendingUp, Award, type LucideIcon } from 'lucide-react';
+import { Download, Video, X, Zap, Clock, Flame, TrendingUp, Award, type LucideIcon } from 'lucide-react';
 import { formatTime } from '@/lib/storage';
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  recordingUrl?: string | null;
   stats: {
     duration: number;
     gestures: number;
@@ -81,7 +82,7 @@ function getGrade(posturePercent: number): { grade: string; label: string; color
   return { grade: 'D', label: 'Sit Up & Smile!', color: '#888' };
 }
 
-export default function SessionSummary({ open, onClose, stats }: Props) {
+export default function SessionSummary({ open, onClose, stats, recordingUrl }: Props) {
   const { duration, gestures, bestStreak, smileCount, slouchCount, goodPostureSeconds } = stats;
 
   const goodPosturePercent =
@@ -254,6 +255,43 @@ export default function SessionSummary({ open, onClose, stats }: Props) {
                     <p className="font-bold text-white text-sm">Commanding Presence!</p>
                     <p className="text-xs text-gray-400">80%+ of session with great posture</p>
                   </div>
+                </motion.div>
+              )}
+
+              {/* Session recording */}
+              {recordingUrl && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.55, duration: 0.35 }}
+                  className="mb-4 rounded-2xl overflow-hidden"
+                  style={{ border: '1px solid rgba(0,240,255,0.18)' }}
+                >
+                  <div
+                    className="flex items-center justify-between px-4 py-3"
+                    style={{ background: 'rgba(0,240,255,0.06)' }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Video size={15} style={{ color: '#00f0ff' }} />
+                      <span className="text-sm font-bold text-white">Your Recording</span>
+                    </div>
+                    <a
+                      href={recordingUrl}
+                      download="gestureflow-session.webm"
+                      className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full"
+                      style={{ background: 'rgba(0,240,255,0.1)', border: '1px solid rgba(0,240,255,0.28)', color: '#00f0ff' }}
+                    >
+                      <Download size={11} />
+                      Download
+                    </a>
+                  </div>
+                  <video
+                    src={recordingUrl}
+                    controls
+                    playsInline
+                    className="w-full block"
+                    style={{ maxHeight: 240, background: '#000', display: 'block' }}
+                  />
                 </motion.div>
               )}
 

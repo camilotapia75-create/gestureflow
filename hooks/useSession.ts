@@ -164,14 +164,14 @@ export function useSession(): SessionControls {
         if (
           result.isPowerMove &&
           lastGestureRef.current !== result.gesture &&
-          result.impact > 60
+          result.impact > 45
         ) {
           gestureCountRef.current += 1;
         }
         lastGestureRef.current = result.gesture;
 
-        // ── Streak (impact > 80 for 3+ seconds) ──
-        if (roundedImpact >= 80) {
+        // ── Streak (impact >= 68 for 3+ seconds) ──
+        if (roundedImpact >= 68) {
           if (highImpactStartRef.current === 0) {
             highImpactStartRef.current = now;
           } else if (now - highImpactStartRef.current >= 3000) {
@@ -187,12 +187,12 @@ export function useSession(): SessionControls {
         }
 
         // ── Good posture time: accumulate ~0.3s per 300ms tick when posture is good ──
-        if (roundedImpact >= 60 && !result.isSlouching) {
+        if (roundedImpact >= 45 && !result.isSlouching) {
           goodPostureSecondsRef.current += 0.3;
         }
 
-        // ── Confetti at 95+ ──
-        const shouldConfetti = roundedImpact >= 95 && !confettiFiredRef.current;
+        // ── Confetti at 85+ ──
+        const shouldConfetti = roundedImpact >= 85 && !confettiFiredRef.current;
         if (shouldConfetti) confettiFiredRef.current = true;
 
         const candidateTips = selectCoachTips(result, elapsed, isSmiling);

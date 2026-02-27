@@ -179,7 +179,7 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
     if (!visible) return 60;
     if (wrist.y > shoulderY && wrist.y < hipY) return 100; // in zone
     if (wrist.y <= shoulderY) return 65;                   // above shoulders (theatrical)
-    return 20;                                             // below hips (passive)
+    return 40;                                             // below hips (passive)
   };
   const powerZoneScore = (
     zoneScore(lW, isVisible(lW)) + zoneScore(rW, isVisible(rW))
@@ -226,8 +226,8 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
     (handSpread > 0.9 ? 15 : handSpread * 12);
 
   // Penalties
-  if (fidgeting) impact -= 25;
-  if (isSlouching) impact -= 35; // was -15; harsh — slouching tanks the score
+  if (fidgeting) impact -= 10;
+  if (isSlouching) impact -= 15;
   impact = clamp(impact);
 
   // ── Classify gesture ──

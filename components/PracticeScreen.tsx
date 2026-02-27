@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Lightbulb, Square } from 'lucide-react';
+import { ArrowLeft, Camera, Lightbulb, Square } from 'lucide-react';
 
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
 import { useFaceLandmarker } from '@/hooks/useFaceLandmarker';
@@ -27,17 +27,17 @@ const GESTURE_COLORS: Record<string, string> = {
 
 // ── Impact badge ──────────────────────────────────────────────────────────
 function ImpactBadge({ impact }: { impact: number }) {
-  const color = impact >= 80 ? '#00f0ff' : impact >= 60 ? '#ffaa00' : '#888';
+  const color = impact >= 68 ? '#00f0ff' : impact >= 50 ? '#ffaa00' : '#888';
   return (
     <motion.div
-      animate={{ scale: impact >= 90 ? [1, 1.05, 1] : 1 }}
+      animate={{ scale: impact >= 75 ? [1, 1.05, 1] : 1 }}
       transition={{ duration: 0.4, repeat: impact >= 90 ? Infinity : 0 }}
       className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-sm"
       style={{
         background: `${color}20`,
         border: `1px solid ${color}60`,
         color,
-        boxShadow: impact >= 80 ? `0 0 12px ${color}50` : 'none',
+        boxShadow: impact >= 68 ? `0 0 12px ${color}50` : 'none',
       }}
     >
       <span className="w-2 h-2 rounded-full" style={{ background: color }} />
@@ -46,15 +46,151 @@ function ImpactBadge({ impact }: { impact: number }) {
   );
 }
 
+// ── Stick-figure illustrations for each tip ───────────────────────────────
+// Small SVG "how it looks" reference shown inside every tip bubble.
+// Uses the gesture accent colour so each pose is visually distinct.
+function PoseIllustration({ tipId }: { tipId: string }) {
+  const COLORS: Record<string, string> = {
+    'power-pose': '#ff00cc',
+    steeple:      '#7b2fff',
+    'open-palms': '#00f0ff',
+    'raise-hands':'#00ff88',
+    'extend-arms':'#00ff88',
+    slouching:    '#ff4444',
+    'above-waist':'#00f0ff',
+    'open-chest': '#ffaa00',
+  };
+  const c = COLORS[tipId];
+  if (!c) return null;
+
+  // Shared stroke props
+  const s  = { stroke: c, strokeWidth: 2.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
+  const s1 = { ...s, strokeWidth: 2 };
+  const s0 = { ...s, strokeWidth: 1.5 };
+
+  // Common anatomy helpers (all coords in viewBox "−6 0 68 68" = x:−6..62, y:0..68)
+  // Head: cx=28 cy=10 r=7  Shoulders: (10,24)—(46,24)  Torso: (28,17)—(28,44)  Hips: (16,44)—(40,44)
+  const HEAD     = <circle cx="28" cy="10" r="7" {...s1} />;
+  const TORSO    = <line x1="28" y1="17" x2="28" y2="44" {...s} />;
+  const HIPS     = <line x1="16" y1="44" x2="40" y2="44" {...s} />;
+  const SHLDR    = <line x1="10" y1="24" x2="46" y2="24" {...s1} />;
+
+  let inner: React.ReactNode;
+  switch (tipId) {
+    case 'power-pose':
+      inner = <>{HEAD}{TORSO}{HIPS}{SHLDR}
+        {/* both arms raised wide */}
+        <polyline points="10,24 4,14 2,6"   {...s} />
+        <polyline points="46,24 52,14 54,6"  {...s} />
+      </>;
+      break;
+    case 'steeple':
+      inner = <>{HEAD}{TORSO}{HIPS}{SHLDR}
+        {/* arms down to meet at fingertip diamond */}
+        <polyline points="10,24 14,36 26,42" {...s} />
+        <polyline points="46,24 42,36 30,42" {...s} />
+        <circle cx="28" cy="42" r="2.5" fill={c} stroke={c} strokeWidth="1" />
+      </>;
+      break;
+    case 'open-palms':
+      inner = <>{HEAD}{TORSO}{HIPS}{SHLDR}
+        {/* arms extended to sides */}
+        <line x1="10" y1="24" x2="0"  y2="28" {...s} />
+        <line x1="46" y1="24" x2="56" y2="28" {...s} />
+        {/* open-hand finger lines at each wrist */}
+        <line x1="-2" y1="25" x2="-2" y2="31" {...s0} />
+        <line x1="0"  y1="24" x2="0"  y2="32" {...s0} />
+        <line x1="2"  y1="25" x2="2"  y2="31" {...s0} />
+        <line x1="54" y1="25" x2="54" y2="31" {...s0} />
+        <line x1="56" y1="24" x2="56" y2="32" {...s0} />
+        <line x1="58" y1="25" x2="58" y2="31" {...s0} />
+      </>;
+      break;
+    case 'raise-hands':
+      inner = <>{HEAD}{TORSO}{HIPS}{SHLDR}
+        {/* bent elbows, forearms angled up to chest height */}
+        <polyline points="10,24 6,34 14,28"  {...s} />
+        <polyline points="46,24 50,34 42,28"  {...s} />
+      </>;
+      break;
+    case 'extend-arms':
+      inner = <>{HEAD}{TORSO}{HIPS}{SHLDR}
+        {/* arms with outward-pointing arrows */}
+        <line x1="10" y1="24" x2="1"  y2="24" {...s} />
+        <polyline points="5,20 0,24 5,28"  {...s1} />
+        <line x1="46" y1="24" x2="55" y2="24" {...s} />
+        <polyline points="51,20 56,24 51,28" {...s1} />
+      </>;
+      break;
+    case 'slouching':
+      inner = <>
+        {/* head jutting forward */}
+        <circle cx="24" cy="12" r="7" {...s1} />
+        {/* curved hunched torso */}
+        <path d="M 28 19 Q 18 30 20 46" {...s} />
+        <line x1="12" y1="46" x2="36" y2="46" {...s} />
+        {/* drooping/narrowed shoulders */}
+        <path d="M 12 27 Q 22 24 28 25 Q 34 26 44 28" {...s1} />
+        {/* ✕ warning */}
+        <line x1="46" y1="6"  x2="54" y2="14" {...s1} />
+        <line x1="54" y1="6"  x2="46" y2="14" {...s1} />
+      </>;
+      break;
+    case 'above-waist':
+      inner = <>{HEAD}{TORSO}{HIPS}{SHLDR}
+        {/* dashed waist guideline */}
+        <line x1="4" y1="38" x2="52" y2="38" stroke={c} strokeWidth="1" strokeDasharray="3,3" />
+        {/* hands sitting at chest/waist level (above dashed line) */}
+        <polyline points="10,24 6,30 10,36"  {...s} />
+        <polyline points="46,24 50,30 46,36"  {...s} />
+        {/* upward arrow */}
+        <line x1="28" y1="58" x2="28" y2="50" {...s1} />
+        <polyline points="24,54 28,49 32,54" {...s1} />
+      </>;
+      break;
+    case 'open-chest':
+      inner = <>{HEAD}{TORSO}{HIPS}
+        {/* exaggerated wide shoulders = open chest */}
+        <line x1="4" y1="24" x2="52" y2="24" {...s1} />
+        {/* arms angled slightly back */}
+        <line x1="4"  y1="24" x2="0"  y2="30" {...s} />
+        <line x1="52" y1="24" x2="56" y2="30" {...s} />
+        {/* star burst at chest */}
+        {[0,45,90,135].map((deg) => {
+          const rad = (deg * Math.PI) / 180;
+          return <line key={deg}
+            x1={28 + Math.cos(rad) * 4} y1={34 + Math.sin(rad) * 4}
+            x2={28 + Math.cos(rad) * 8} y2={34 + Math.sin(rad) * 8}
+            {...s1} />;
+        })}
+      </>;
+      break;
+    default:
+      return null;
+  }
+
+  return (
+    <div
+      className="flex-shrink-0 rounded-xl flex items-center justify-center ml-1"
+      style={{ width: 52, height: 58, background: `${c}09`, border: `1px solid ${c}22` }}
+    >
+      <svg viewBox="-6 0 68 68" width="44" height="50" overflow="visible"
+           fill="none" strokeLinecap="round" strokeLinejoin="round">
+        {inner}
+      </svg>
+    </div>
+  );
+}
+
 // ── Coach tip bubble ──────────────────────────────────────────────────────
-function TipBubble({ text, icon, delay = 0 }: { text: string; icon: string; delay?: number }) {
+function TipBubble({ text, icon, delay = 0, tipId }: { text: string; icon: string; delay?: number; tipId?: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -10, scale: 0.9 }}
       transition={{ duration: 0.45, delay, ease: [0.34, 1.56, 0.64, 1] }}
-      className="flex items-start gap-3.5 px-6 py-5 rounded-2xl max-w-md"
+      className="flex items-center gap-3.5 px-6 py-5 rounded-2xl max-w-lg"
       style={{
         background: 'rgba(8,8,22,0.92)',
         border: '1px solid rgba(0,240,255,0.22)',
@@ -62,11 +198,12 @@ function TipBubble({ text, icon, delay = 0 }: { text: string; icon: string; dela
         boxShadow: '0 4px 32px rgba(0,0,0,0.7)',
       }}
     >
-      <Lightbulb size={20} style={{ color: '#00f0ff', flexShrink: 0, marginTop: 3 }} />
-      <span className="text-base text-gray-100 leading-snug font-medium">
+      <Lightbulb size={20} style={{ color: '#00f0ff', flexShrink: 0 }} />
+      <span className="flex-1 text-base text-gray-100 leading-snug font-medium">
         <span className="mr-1.5 text-lg">{icon}</span>
         {text}
       </span>
+      <PoseIllustration tipId={tipId ?? ''} />
     </motion.div>
   );
 }
@@ -164,7 +301,7 @@ export default function PracticeScreen() {
   const [isSmiling, setIsSmiling] = useState(false);
   const isSmilingRef = useRef(false);
   const lastFaceDetectRef = useRef(0);
-  const SMILE_THRESHOLD = 0.28;
+  const SMILE_THRESHOLD = 0.20;
   const lastSmiledAtRef = useRef(-1); // -1 until first face detection runs
   const smileScoreRef = useRef(0);
   const showSmileReminderRef = useRef(false);
@@ -180,6 +317,52 @@ export default function PracticeScreen() {
   const nullStreakRef = useRef(0);
   const debugTimerRef = useRef(0);
   const [debugLine, setDebugLine] = useState('');
+
+  // ── Recording ─────────────────────────────────────────────────────────────
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+
+  const startRecording = useCallback((stream: MediaStream) => {
+    try {
+      if (!('MediaRecorder' in window)) return;
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : MediaRecorder.isTypeSupported('video/webm')
+        ? 'video/webm'
+        : '';
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+      recordedChunksRef.current = [];
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      mr.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: mr.mimeType || 'video/webm' });
+        setRecordingUrl(URL.createObjectURL(blob));
+      };
+      mr.start(1000);
+      mediaRecorderRef.current = mr;
+      setIsRecording(true);
+    } catch {
+      // Recording not supported — fail silently
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  }, []);
+
+  const toggleRecording = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    } else if (streamRef.current) {
+      startRecording(streamRef.current);
+    }
+  }, [isRecording, startRecording, stopRecording]);
 
   // ── Camera setup ────────────────────────────────────────────────────────
   const startCamera = useCallback(async () => {
@@ -323,6 +506,7 @@ export default function PracticeScreen() {
   const endSession = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current);
     stop();
+    stopRecording();
 
     const ended = {
       duration: state.elapsed,
@@ -348,6 +532,7 @@ export default function PracticeScreen() {
     return () => {
       cancelAnimationFrame(animFrameRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop();
     };
   }, []);
 
@@ -470,7 +655,7 @@ export default function PracticeScreen() {
       {/* ── RIGHT SIDE: streak + skeleton legend ── */}
       <div className="absolute top-20 right-4 z-20 flex flex-col gap-2 items-end">
         <AnimatePresence>
-          {state.streak > 3 && (
+          {state.streak > 2 && (
             <motion.div
               key="streak"
               initial={{ opacity: 0, x: 20 }}
@@ -638,7 +823,7 @@ export default function PracticeScreen() {
         <div className="flex flex-col items-start gap-2">
           <AnimatePresence mode="popLayout">
             {state.tips.map((tip, i) => (
-              <TipBubble key={tip.id} text={tip.text} icon={tip.icon} delay={i * 0.1} />
+              <TipBubble key={tip.id} text={tip.text} icon={tip.icon} delay={i * 0.1} tipId={tip.id} />
             ))}
           </AnimatePresence>
         </div>
@@ -657,13 +842,13 @@ export default function PracticeScreen() {
         className="absolute bottom-0 left-0 right-0 z-20 pb-safe"
         style={{ background: 'linear-gradient(0deg, rgba(5,5,16,0.97) 0%, rgba(5,5,16,0.8) 100%)' }}
       >
-        <div className="flex items-center justify-between px-6 pt-4 pb-4">
+        <div className="flex items-center justify-between px-4 pt-4 pb-4">
 
           {/* Good moves counter */}
           <motion.div
             animate={{ scale: state.gestures > 0 ? [1, 1.1, 1] : 1 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col items-center min-w-[72px]"
+            className="flex flex-col items-center min-w-[56px]"
           >
             <span
               className="text-2xl font-black leading-none"
@@ -676,11 +861,37 @@ export default function PracticeScreen() {
             </span>
           </motion.div>
 
-          {/* Record / Stop button */}
+          {/* Record toggle */}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleRecording}
+            className="flex flex-col items-center gap-1 min-w-[48px]"
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center"
+              style={{
+                background: isRecording ? 'rgba(255,50,50,0.18)' : 'rgba(255,255,255,0.07)',
+                border: `1.5px solid ${isRecording ? 'rgba(255,80,80,0.7)' : 'rgba(255,255,255,0.14)'}`,
+                boxShadow: isRecording ? '0 0 10px rgba(255,50,50,0.4)' : 'none',
+              }}
+            >
+              {isRecording
+                ? <motion.div className="w-3 h-3 rounded-full bg-red-500"
+                    animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1, repeat: Infinity }} />
+                : <Camera size={15} style={{ color: '#888aaa' }} />
+              }
+            </div>
+            <span className="text-[9px] font-bold uppercase tracking-wider"
+              style={{ color: isRecording ? '#ff5050' : '#555577' }}>
+              {isRecording ? 'REC' : 'REC'}
+            </span>
+          </motion.button>
+
+          {/* Stop button */}
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={endSession}
-            className="relative w-18 h-18 rounded-full flex items-center justify-center"
+            className="relative rounded-full flex items-center justify-center"
             style={{ width: 72, height: 72 }}
           >
             {/* Pulse ring */}
@@ -714,7 +925,7 @@ export default function PracticeScreen() {
 
       {/* ── High impact flash overlay ── */}
       <AnimatePresence>
-        {state.impact >= 90 && (
+        {state.impact >= 75 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -735,9 +946,12 @@ export default function PracticeScreen() {
         open={showSummary}
         onClose={() => {
           setShowSummary(false);
+          if (recordingUrl) URL.revokeObjectURL(recordingUrl);
+          setRecordingUrl(null);
           router.push('/');
         }}
         stats={sessionEnded ?? { duration: 0, gestures: 0, bestStreak: 0, smileCount: 0, slouchCount: 0, goodPostureSeconds: 0 }}
+        recordingUrl={recordingUrl}
       />
     </div>
   );
