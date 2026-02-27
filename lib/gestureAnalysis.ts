@@ -131,13 +131,25 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
 
   // ── Slouching: nose should be clearly above shoulder level ──
   // Normalize by shoulder width so the check is distance-invariant.
-  // ratio < 0.25 means the nose is barely above the shoulders → slouching.
+  // Threshold raised to 0.40 (was 0.25) to catch moderate slouching,
+  // not just severe head-drop. Also check forward-head posture via Z axis.
   const shoulderMidY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.4;
   const noseAboveShoulder =
     isVisible(nose) && isVisible(lS) && isVisible(rS) && shoulderWidth > 0
       ? (shoulderMidY - nose.y) / shoulderWidth
       : 0.5; // assume good posture if landmarks not visible
-  const isSlouching = noseAboveShoulder < 0.25;
+
+  // Forward-head check via Z axis: positive Z = away from camera in MediaPipe.
+  // If nose Z is much more negative (closer to camera) than shoulders, the head
+  // is jutting forward — a common desk-posture issue the Y-axis alone misses.
+  const shoulderMidZ = ((lS.z ?? 0) + (rS.z ?? 0)) / 2;
+  const noseZ = nose?.z ?? 0;
+  const isHeadForward =
+    isVisible(nose) && isVisible(lS) && isVisible(rS)
+      ? noseZ - shoulderMidZ < -0.12
+      : false;
+
+  const isSlouching = noseAboveShoulder < 0.40 || isHeadForward;
 
   // ── Power zone: hands between shoulders and hips score highest (Navarro / TED research) ──
   const shoulderY = isVisible(lS) && isVisible(rS) ? (lS.y + rS.y) / 2 : 0.35;
@@ -193,7 +205,7 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
 
   // Penalties
   if (fidgeting) impact -= 25;
-  if (isSlouching) impact -= 15;
+  if (isSlouching) impact -= 35; // was -15; harsh — slouching tanks the score
   impact = clamp(impact);
 
   // ── Classify gesture ──

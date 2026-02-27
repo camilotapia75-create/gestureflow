@@ -451,7 +451,7 @@ export default function PracticeScreen() {
         </div>
       </div>
 
-      {/* ── RIGHT SIDE: streak + slouching warning ── */}
+      {/* ── RIGHT SIDE: streak + skeleton legend ── */}
       <div className="absolute top-20 right-4 z-20 flex flex-col gap-2 items-end">
         <AnimatePresence>
           {state.streak > 3 && (
@@ -477,30 +477,74 @@ export default function PracticeScreen() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {state.isSlouching && (
-            <motion.div
-              key="slouch"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.25 }}
-            >
-              <div
-                className="px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-black"
-                style={{
-                  background: 'rgba(255,68,68,0.15)',
-                  border: '1px solid rgba(255,68,68,0.5)',
-                  color: '#ff4444',
-                  boxShadow: '0 0 12px rgba(255,68,68,0.35)',
-                }}
-              >
-                🪑 Sit Up!
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Skeleton color legend — always visible so users know what colors mean */}
+        <div
+          className="flex flex-col gap-1.5 px-3 py-2.5 rounded-2xl"
+          style={{ background: 'rgba(5,5,16,0.72)', border: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          {(
+            [
+              { color: '#00ff88', label: 'Great form' },
+              { color: '#ffcc00', label: 'Extend arms' },
+              { color: '#ff4444', label: 'Slouching!' },
+            ] as const
+          ).map(({ color, label }) => (
+            <div key={color} className="flex items-center gap-2">
+              <span
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ background: color, boxShadow: `0 0 5px ${color}` }}
+              />
+              <span className="text-[11px] font-semibold text-gray-400 whitespace-nowrap">
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* ── CENTER SLOUCH WARNING — unmissable banner ── */}
+      <AnimatePresence>
+        {state.isSlouching && (
+          <motion.div
+            key="slouch-center"
+            initial={{ opacity: 0, scale: 0.8, y: -16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.88, y: -8 }}
+            transition={{ duration: 0.28, ease: [0.34, 1.56, 0.64, 1] }}
+            className="absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+            style={{ top: '28%' }}
+          >
+            <motion.div
+              animate={{
+                boxShadow: [
+                  '0 0 30px rgba(255,40,40,0.45)',
+                  '0 0 60px rgba(255,40,40,0.75)',
+                  '0 0 30px rgba(255,40,40,0.45)',
+                ],
+              }}
+              transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+              className="flex flex-col items-center gap-2 px-10 py-5 rounded-3xl"
+              style={{
+                background: 'rgba(160,10,10,0.35)',
+                border: '2px solid rgba(255,60,60,0.85)',
+                backdropFilter: 'blur(18px)',
+                minWidth: '220px',
+              }}
+            >
+              <span className="text-5xl leading-none">🪑</span>
+              <span
+                className="text-3xl font-black tracking-widest uppercase leading-none"
+                style={{ color: '#ff4444' }}
+              >
+                Sit Up!
+              </span>
+              <span className="text-sm font-medium text-center" style={{ color: 'rgba(255,180,180,0.85)' }}>
+                Slouching hurts your presence
+              </span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── LEFT SIDE: smile indicator (visible once face model is ready) ── */}
       <AnimatePresence>
