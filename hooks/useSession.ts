@@ -45,10 +45,20 @@ const INITIAL_STATE: SessionState = {
   goodPostureSeconds: 0,
 };
 
+export interface FinalSnapshot {
+  elapsed: number;
+  gestures: number;
+  bestStreak: number;
+  peakImpact: number;
+  smileCount: number;
+  slouchCount: number;
+  goodPostureSeconds: number;
+}
+
 export interface SessionControls {
   state: SessionState;
   start: () => void;
-  stop: () => void;
+  stop: () => FinalSnapshot;
   processPose: (landmarks: { x: number; y: number; z: number; visibility?: number }[], isSmiling?: boolean) => void;
 }
 
@@ -91,6 +101,10 @@ export function useSession(): SessionControls {
   const goodPostureSecondsRef = useRef(0);
   const lastSmilingRef = useRef(false);
   const lastSlouchingRef = useRef(false);
+  // Debounce: only count a new slouch event if the previous one ended ≥ 3 s ago,
+  // preventing rapid-flicker detections from inflating the count.
+  const lastSlouchCountedAtRef = useRef(0);
+  const SLOUCH_DEBOUNCE_MS = 3000;
   // Tips are throttled: only replace after MIN_TIP_HOLD_MS unless the slouch
   // tip appears/disappears (high-priority, always immediate).
   const MIN_TIP_HOLD_MS = 8000;
@@ -114,6 +128,7 @@ export function useSession(): SessionControls {
     goodPostureSecondsRef.current = 0;
     lastSmilingRef.current = false;
     lastSlouchingRef.current = false;
+    lastSlouchCountedAtRef.current = 0;
     lastTipUpdateRef.current = 0;
     shownTipsRef.current = [];
 
@@ -127,10 +142,22 @@ export function useSession(): SessionControls {
     }, 1000);
   }, []);
 
-  const stop = useCallback(() => {
+  const stop = useCallback((): FinalSnapshot => {
     activeRef.current = false;
     if (timerRef.current) clearInterval(timerRef.current);
-    setState((prev) => ({ ...prev, isActive: false }));
+    // Capture the true final values directly from refs — React state may be
+    // up to 300 ms stale (it's only flushed on the impact-smoothing timer).
+    const snapshot: FinalSnapshot = {
+      elapsed:            Math.floor((Date.now() - startTimeRef.current) / 1000),
+      gestures:           gestureCountRef.current,
+      bestStreak:         bestStreakRef.current,
+      peakImpact:         peakImpactRef.current,
+      smileCount:         smileCountRef.current,
+      slouchCount:        slouchCountRef.current,
+      goodPostureSeconds: Math.round(goodPostureSecondsRef.current),
+    };
+    setState((prev) => ({ ...prev, isActive: false, ...snapshot }));
+    return snapshot;
   }, []);
 
   const processPose = useCallback(
@@ -145,7 +172,11 @@ export function useSession(): SessionControls {
       if (isSmiling && !lastSmilingRef.current) smileCountRef.current += 1;
       lastSmilingRef.current = isSmiling;
 
-      if (result.isSlouching && !lastSlouchingRef.current) slouchCountRef.current += 1;
+      if (result.isSlouching && !lastSlouchingRef.current &&
+          now - lastSlouchCountedAtRef.current >= SLOUCH_DEBOUNCE_MS) {
+        slouchCountRef.current += 1;
+        lastSlouchCountedAtRef.current = now;
+      }
       lastSlouchingRef.current = result.isSlouching;
 
       // ── Impact smoothing (300ms window) ──

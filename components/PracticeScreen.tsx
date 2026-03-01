@@ -671,35 +671,37 @@ export default function PracticeScreen() {
   // ── End session ──────────────────────────────────────────────────────────
   const endSession = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current);
-    stop();
+    // stop() returns a synchronous snapshot of all ref values — avoids reading
+    // stale React state which is only flushed on the 300ms impact-smoothing tick.
+    const final = stop();
     stopRecording();
 
     const ended = {
-      duration: state.elapsed,
-      gestures: state.gestures,
-      bestStreak: state.bestStreak,
-      smileCount: state.smileCount,
-      slouchCount: state.slouchCount,
-      goodPostureSeconds: state.goodPostureSeconds,
+      duration:           final.elapsed,
+      gestures:           final.gestures,
+      bestStreak:         final.bestStreak,
+      smileCount:         final.smileCount,
+      slouchCount:        final.slouchCount,
+      goodPostureSeconds: final.goodPostureSeconds,
     };
 
     recordSession({
       ...ended,
       impact: 0,
       streak: ended.bestStreak,
-      peakImpact: state.peakImpact,
+      peakImpact: final.peakImpact,
     });
 
     // Also save to Supabase when signed in (fire-and-forget — no-op if unauthed)
     saveSessionToDb({
       ...ended,
-      bestStreak:  ended.bestStreak,
-      peakImpact:  state.peakImpact,
+      bestStreak: ended.bestStreak,
+      peakImpact: final.peakImpact,
     });
 
     setSessionEnded(ended);
     setShowSummary(true);
-  }, [state, stop]);
+  }, [stop, stopRecording]);
 
   // Cleanup stream on unmount
   useEffect(() => {
