@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Camera, Lightbulb, Square } from 'lucide-react';
+import { saveSessionToDb } from '@/lib/db';
 
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
 import { useFaceLandmarker } from '@/hooks/useFaceLandmarker';
@@ -319,20 +320,33 @@ export default function PracticeScreen() {
   const [debugLine, setDebugLine] = useState('');
 
   // ── Recording ─────────────────────────────────────────────────────────────
+  // Captures an off-screen canvas that composites the live video feed AND the
+  // glowing skeleton overlay, so the recording shows everything the user sees.
+  // drawGlowingSkeleton applies ctx.translate/scale(-1,1) internally, so the
+  // skeleton pixels are already in selfie (mirrored) space — we mirror the
+  // video the same way when blitting to the composite canvas.
+  const compositeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
 
-  const startRecording = useCallback((stream: MediaStream) => {
+  const startRecording = useCallback(() => {
     try {
       if (!('MediaRecorder' in window)) return;
+      const cc = document.createElement('canvas');
+      const video = videoRef.current;
+      cc.width  = video?.videoWidth  || 1280;
+      cc.height = video?.videoHeight || 720;
+      compositeCanvasRef.current = cc;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const compositeStream = (cc as any).captureStream(25) as MediaStream;
       const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
         ? 'video/webm;codecs=vp9'
         : MediaRecorder.isTypeSupported('video/webm')
         ? 'video/webm'
         : '';
-      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+      const mr = new MediaRecorder(compositeStream, mimeType ? { mimeType } : {});
       recordedChunksRef.current = [];
       mr.ondataavailable = (e) => {
         if (e.data.size > 0) recordedChunksRef.current.push(e.data);
@@ -359,8 +373,8 @@ export default function PracticeScreen() {
   const toggleRecording = useCallback(() => {
     if (isRecording) {
       stopRecording();
-    } else if (streamRef.current) {
-      startRecording(streamRef.current);
+    } else {
+      startRecording();
     }
   }, [isRecording, startRecording, stopRecording]);
 
@@ -470,6 +484,29 @@ export default function PracticeScreen() {
         if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
 
+      // ── Composite canvas for recording (video + skeleton overlay) ────────
+      // Runs every frame regardless of whether landmarks were found, so the
+      // recording stays live even during brief detection gaps.
+      const cc = compositeCanvasRef.current;
+      if (cc) {
+        if (cc.width !== canvas.width || cc.height !== canvas.height) {
+          cc.width  = canvas.width  || 640;
+          cc.height = canvas.height || 480;
+        }
+        const cctx = cc.getContext('2d');
+        if (cctx) {
+          // 1. Draw video mirrored (selfie view — matches what user sees on screen)
+          cctx.save();
+          cctx.translate(cc.width, 0);
+          cctx.scale(-1, 1);
+          cctx.drawImage(video, 0, 0, cc.width, cc.height);
+          cctx.restore();
+          // 2. Draw skeleton canvas on top — drawGlowingSkeleton already applied
+          //    its own mirror transform internally, so pixels are in selfie space.
+          if (canvas.width > 0) cctx.drawImage(canvas, 0, 0, cc.width, cc.height);
+        }
+      }
+
       // Debug: flush every 500ms
       if (now - debugTimerRef.current > 500) {
         debugTimerRef.current = now;
@@ -523,6 +560,14 @@ export default function PracticeScreen() {
       streak: ended.bestStreak,
       peakImpact: state.peakImpact,
     });
+
+    // Also save to Supabase when signed in (fire-and-forget — no-op if unauthed)
+    saveSessionToDb({
+      ...ended,
+      bestStreak:  ended.bestStreak,
+      peakImpact:  state.peakImpact,
+    });
+
     setSessionEnded(ended);
     setShowSummary(true);
   }, [state, stop]);

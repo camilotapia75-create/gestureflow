@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
-  Bell,
-  Settings,
+  Cloud,
+  CloudOff,
   Flame,
+  LogIn,
+  LogOut,
   Star,
   Clock,
   Zap,
@@ -17,6 +19,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { loadStats, formatTime, StoredStats } from '@/lib/storage';
+import { loadUserStats, loadSessionsFromDb, type DbSession } from '@/lib/db';
+import { useUser } from '@/hooks/useUser';
+import { createClient } from '@/lib/supabase';
 
 // ── Stat Card ─────────────────────────────────────────────────────────────
 function StatCard({
@@ -127,14 +132,37 @@ function SessionRow({ date, impact, duration }: { date: string; impact: number; 
 // ── Dashboard ─────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const router = useRouter();
-  const [stats, setStats] = useState<StoredStats | null>(null);
+  const { user, loading: userLoading } = useUser();
+
+  // Local stats (always available, used as fallback when signed out)
+  const [localStats, setLocalStats] = useState<StoredStats | null>(null);
+
+  // Cloud stats (used when signed in)
+  const [cloudSessions, setCloudSessions] = useState<DbSession[] | null>(null);
+  const [cloudLoading, setCloudLoading] = useState(false);
+
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
-    setStats(loadStats());
+    setLocalStats(loadStats());
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
+
+  // Fetch cloud sessions whenever auth state changes
+  useEffect(() => {
+    if (!user) { setCloudSessions(null); return; }
+    setCloudLoading(true);
+    loadSessionsFromDb()
+      .then((rows) => setCloudSessions(rows))
+      .finally(() => setCloudLoading(false));
+  }, [user]);
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.refresh();
+  }
 
   const greeting = (() => {
     const h = now.getHours();
@@ -143,14 +171,43 @@ export default function Dashboard() {
     return 'Good evening';
   })();
 
-  // Build mock weekly activity (last 7 session impacts or zeros)
+  // Aggregate stats: prefer cloud when signed in, fall back to localStorage
+  const stats = localStats; // always used for week chart (localStorage)
+  const totalGestures = user && cloudSessions
+    ? cloudSessions.reduce((s, r) => s + r.gestures, 0)
+    : localStats?.totalGestures ?? 0;
+  const bestImpact = user && cloudSessions && cloudSessions.length > 0
+    ? Math.max(...cloudSessions.map((r) => r.peak_impact))
+    : localStats?.bestImpact ?? 0;
+  const totalTime = user && cloudSessions
+    ? cloudSessions.reduce((s, r) => s + r.duration, 0)
+    : localStats?.totalTime ?? 0;
+  const bestStreak = user && cloudSessions && cloudSessions.length > 0
+    ? Math.max(...cloudSessions.map((r) => r.best_streak))
+    : localStats?.bestStreak ?? 0;
+
+  // Weekly activity bar chart — last 7 local sessions (quick, no async)
   const weekActivity = Array.from({ length: 7 }, (_, i) => {
-    const s = stats?.sessions[stats.sessions.length - 7 + i];
+    const s = stats?.sessions[( stats.sessions.length - 7 + i)];
     return s ? s.impact : 0;
   });
   const maxActivity = Math.max(...weekActivity, 1);
+  const totalSessions = user && cloudSessions ? cloudSessions.length : localStats?.totalSessions ?? 0;
 
-  const recentSessions = stats?.sessions.slice(-3).reverse() ?? [];
+  // Recent sessions list
+  const recentSessions = user && cloudSessions
+    ? cloudSessions.slice(0, 3).map((r) => ({
+        id: r.id,
+        date: r.created_at,
+        impact: r.peak_impact,
+        duration: r.duration,
+      }))
+    : (localStats?.sessions.slice(-3).reverse() ?? []).map((r) => ({
+        id: r.id,
+        date: r.date,
+        impact: r.peakImpact,
+        duration: r.duration,
+      }));
 
   return (
     <div className="page-scroll cyber-bg scanline">
@@ -171,34 +228,81 @@ export default function Dashboard() {
             <p className="text-gray-500 text-xs mt-0.5">{greeting} 👋</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              <Bell size={18} className="text-gray-400" />
-            </button>
-            <button
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              <Settings size={18} className="text-gray-400" />
-            </button>
+            {/* Cloud sync status indicator */}
+            {!userLoading && (
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold"
+                style={{
+                  background: user ? 'rgba(0,255,136,0.08)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${user ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                  color: user ? '#00ff88' : '#444466',
+                }}
+              >
+                {user ? <Cloud size={12} /> : <CloudOff size={12} />}
+                {user ? 'Synced' : 'Local'}
+              </div>
+            )}
+            {/* Sign in / out */}
+            {!userLoading && (
+              user
+                ? <button
+                    onClick={handleSignOut}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
+                    title="Sign out"
+                  >
+                    <LogOut size={16} className="text-gray-400" />
+                  </button>
+                : <button
+                    onClick={() => router.push('/auth')}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
+                    style={{
+                      background: 'rgba(0,240,255,0.1)',
+                      border: '1px solid rgba(0,240,255,0.2)',
+                      color: '#00f0ff',
+                    }}
+                  >
+                    <LogIn size={13} />
+                    Sign In
+                  </button>
+            )}
           </div>
         </motion.div>
+
+        {/* Cloud sync prompt (signed-out users) */}
+        {!userLoading && !user && (
+          <motion.button
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => router.push('/auth')}
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl mb-4 w-full text-left"
+            style={{
+              background: 'rgba(0,240,255,0.04)',
+              border: '1px solid rgba(0,240,255,0.12)',
+            }}
+          >
+            <Cloud size={18} style={{ color: '#00f0ff', flexShrink: 0 }} />
+            <div>
+              <p className="text-xs font-bold text-white">Sync progress across devices</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">Sign in to save your history to the cloud</p>
+            </div>
+            <ChevronRight size={14} className="text-gray-600 ml-auto flex-shrink-0" />
+          </motion.button>
+        )}
 
         {/* ── Stats grid ── */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           <StatCard
             icon={Flame}
             label="Gestures"
-            value={stats?.totalGestures ?? 0}
+            value={cloudLoading ? '…' : totalGestures}
             color="#ff6600"
             delay={0.1}
           />
           <StatCard
             icon={Star}
             label="Best Impact"
-            value={stats?.bestImpact ?? 0}
+            value={cloudLoading ? '…' : bestImpact}
             unit="%"
             color="#ffaa00"
             delay={0.15}
@@ -206,14 +310,14 @@ export default function Dashboard() {
           <StatCard
             icon={Clock}
             label="Total Time"
-            value={formatTime(stats?.totalTime ?? 0)}
+            value={cloudLoading ? '…' : formatTime(totalTime)}
             color="#00f0ff"
             delay={0.2}
           />
           <StatCard
             icon={Zap}
             label="Best Streak"
-            value={stats?.bestStreak ?? 0}
+            value={cloudLoading ? '…' : bestStreak}
             unit="s"
             color="#7b2fff"
             delay={0.25}
@@ -232,7 +336,7 @@ export default function Dashboard() {
             <span className="text-sm font-bold text-white">This Week</span>
             <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#00f0ff' }}>
               <TrendingUp size={13} />
-              <span>{stats?.totalSessions ?? 0} sessions</span>
+              <span>{totalSessions} sessions</span>
             </div>
           </div>
           <div className="flex items-end justify-between gap-2">
@@ -255,7 +359,7 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-bold text-white">Recent Sessions</span>
-              <span className="text-xs text-gray-500">{stats?.totalSessions ?? 0} total</span>
+              <span className="text-xs text-gray-500">{totalSessions} total</span>
             </div>
             <div className="space-y-2">
               {recentSessions.map((s) => (

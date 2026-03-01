@@ -79,8 +79,11 @@ export function useSession(): SessionControls {
   const impactHistoryRef = useRef<number[]>([]);
   const peakImpactRef = useRef(0);
 
-  // Confetti debounce
-  const confettiFiredRef = useRef(false);
+  // Confetti: time-based cooldown so it can re-fire on sustained peaks.
+  // Not a simple boolean "fired once" — that's why users see it fire once at
+  // the very first frame (impact spikes briefly during model warm-up) and never again.
+  const confettiLastFiredRef = useRef(0);
+  const CONFETTI_COOLDOWN_MS = 30_000; // re-fire at most every 30 s
 
   // Positive-behaviour counters
   const smileCountRef = useRef(0);
@@ -105,7 +108,7 @@ export function useSession(): SessionControls {
     bestStreakRef.current = 0;
     peakImpactRef.current = 0;
     highImpactStartRef.current = 0;
-    confettiFiredRef.current = false;
+    confettiLastFiredRef.current = 0;
     smileCountRef.current = 0;
     slouchCountRef.current = 0;
     goodPostureSecondsRef.current = 0;
@@ -191,9 +194,14 @@ export function useSession(): SessionControls {
           goodPostureSecondsRef.current += 0.3;
         }
 
-        // ── Confetti at 85+ ──
-        const shouldConfetti = roundedImpact >= 85 && !confettiFiredRef.current;
-        if (shouldConfetti) confettiFiredRef.current = true;
+        // ── Confetti: impact ≥ 85, at least 8 s into session, cooldown 30 s ──
+        // Prevents false-positive fire during model warm-up (first ~3 frames often
+        // spike high) and allows it to re-trigger on sustained excellent scores.
+        const shouldConfetti =
+          roundedImpact >= 85 &&
+          elapsed >= 8 &&
+          now - confettiLastFiredRef.current >= CONFETTI_COOLDOWN_MS;
+        if (shouldConfetti) confettiLastFiredRef.current = now;
 
         const candidateTips = selectCoachTips(result, elapsed, isSmiling);
         // Allow immediate swap only when the slouch tip appears/disappears;
