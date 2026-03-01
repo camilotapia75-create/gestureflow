@@ -319,6 +319,13 @@ export default function PracticeScreen() {
   const debugTimerRef = useRef(0);
   const [debugLine, setDebugLine] = useState('');
 
+  // Extra refs for recording overlay (so the RAF loop always sees latest values)
+  const gestureRef = useRef('');
+  const elapsedRef = useRef(0);
+  const gesturesCountRef = useRef(0);
+  const streakRef = useRef(0);
+  const isRecordingRef = useRef(false);
+
   // ── Recording ─────────────────────────────────────────────────────────────
   // Captures an off-screen canvas that composites the live video feed AND the
   // glowing skeleton overlay, so the recording shows everything the user sees.
@@ -484,9 +491,7 @@ export default function PracticeScreen() {
         if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
 
-      // ── Composite canvas for recording (video + skeleton overlay) ────────
-      // Runs every frame regardless of whether landmarks were found, so the
-      // recording stays live even during brief detection gaps.
+      // ── Composite canvas for recording (everything the user sees) ────────
       const cc = compositeCanvasRef.current;
       if (cc) {
         if (cc.width !== canvas.width || cc.height !== canvas.height) {
@@ -495,15 +500,139 @@ export default function PracticeScreen() {
         }
         const cctx = cc.getContext('2d');
         if (cctx) {
-          // 1. Draw video mirrored (selfie view — matches what user sees on screen)
+          const W = cc.width, H = cc.height;
+
+          // 1. Video mirrored (selfie view)
           cctx.save();
-          cctx.translate(cc.width, 0);
+          cctx.translate(W, 0);
           cctx.scale(-1, 1);
-          cctx.drawImage(video, 0, 0, cc.width, cc.height);
+          cctx.drawImage(video, 0, 0, W, H);
           cctx.restore();
-          // 2. Draw skeleton canvas on top — drawGlowingSkeleton already applied
-          //    its own mirror transform internally, so pixels are in selfie space.
-          if (canvas.width > 0) cctx.drawImage(canvas, 0, 0, cc.width, cc.height);
+
+          // 2. Skeleton overlay (already in selfie space)
+          if (canvas.width > 0) cctx.drawImage(canvas, 0, 0, W, H);
+
+          // 3. Dark gradients (top + bottom) — same as the CSS overlay
+          const topG = cctx.createLinearGradient(0, 0, 0, H * 0.25);
+          topG.addColorStop(0, 'rgba(5,5,16,0.75)');
+          topG.addColorStop(1, 'rgba(5,5,16,0)');
+          cctx.fillStyle = topG;
+          cctx.fillRect(0, 0, W, H * 0.25);
+
+          const botG = cctx.createLinearGradient(0, H * 0.6, 0, H);
+          botG.addColorStop(0, 'rgba(5,5,16,0)');
+          botG.addColorStop(1, 'rgba(5,5,16,0.97)');
+          cctx.fillStyle = botG;
+          cctx.fillRect(0, H * 0.6, W, H * 0.4);
+
+          // 4. Gesture name (top center)
+          const GESTURE_COLORS_REC: Record<string, string> = {
+            'OPEN GESTURE': '#00f0ff', 'POWER POSE': '#ff00cc', STEEPLE: '#7b2fff',
+            POINTING: '#ffaa00', EMPHASIS: '#00ff88', 'WIDE STANCE': '#ff6600', REST: '#555577',
+          };
+          const gc = GESTURE_COLORS_REC[gestureRef.current] ?? '#00f0ff';
+          cctx.textAlign = 'center';
+          cctx.font = `600 ${H * 0.022}px Inter, sans-serif`;
+          cctx.fillStyle = gc;
+          cctx.fillText('Detecting', W / 2, H * 0.062);
+          cctx.font = `900 ${H * 0.038}px Inter, sans-serif`;
+          cctx.fillStyle = '#ffffff';
+          cctx.fillText(gestureRef.current, W / 2, H * 0.105);
+
+          // 5. Impact badge (top right)
+          const imp = impactRef.current;
+          const ic = imp >= 68 ? '#00f0ff' : imp >= 50 ? '#ffaa00' : '#888888';
+          cctx.textAlign = 'right';
+          cctx.font = `900 ${H * 0.026}px Inter, sans-serif`;
+          cctx.fillStyle = ic;
+          cctx.fillText(`${imp}%`, W - W * 0.03, H * 0.08);
+
+          // 6. Smile indicator (top left)
+          if (faceReadyRef.current) {
+            const smiling = isSmilingRef.current;
+            const sc = smiling ? '#00ff88' : '#666688';
+            cctx.textAlign = 'left';
+            cctx.font = `${H * 0.038}px serif`;
+            cctx.fillText(smiling ? '😊' : '😐', W * 0.03, H * 0.11);
+            cctx.font = `900 ${H * 0.026}px Inter, sans-serif`;
+            cctx.fillStyle = sc;
+            cctx.fillText(smiling ? 'Smiling!' : 'Smile', W * 0.1, H * 0.105);
+          }
+
+          // 7. Streak badge (top right, below impact)
+          const str = streakRef.current;
+          if (str > 2) {
+            cctx.textAlign = 'right';
+            cctx.font = `900 ${H * 0.022}px Inter, sans-serif`;
+            cctx.fillStyle = '#7b2fff';
+            cctx.fillText(`⚡ ${str}s streak`, W - W * 0.03, H * 0.16);
+          }
+
+          // 8. Slouch warning (center)
+          if (isSlouchingRef.current) {
+            cctx.textAlign = 'center';
+            cctx.font = `${H * 0.075}px serif`;
+            cctx.fillText('🪑', W / 2, H * 0.35);
+            cctx.font = `900 ${H * 0.058}px Inter, sans-serif`;
+            cctx.fillStyle = '#ff4444';
+            cctx.fillText('Sit Up!', W / 2, H * 0.42);
+            cctx.font = `500 ${H * 0.022}px Inter, sans-serif`;
+            cctx.fillStyle = 'rgba(255,180,180,0.85)';
+            cctx.fillText('Slouching hurts your presence', W / 2, H * 0.46);
+          }
+
+          // 9. Smile reminder (center — only when not slouching to avoid overlap)
+          if (showSmileReminderRef.current && !isSlouchingRef.current) {
+            cctx.textAlign = 'center';
+            cctx.font = `${H * 0.075}px serif`;
+            cctx.fillText('😊', W / 2, H * 0.35);
+            cctx.font = `900 ${H * 0.058}px Inter, sans-serif`;
+            cctx.fillStyle = '#ffcc00';
+            cctx.fillText('Smile!', W / 2, H * 0.42);
+            cctx.font = `500 ${H * 0.022}px Inter, sans-serif`;
+            cctx.fillStyle = 'rgba(255,230,150,0.85)';
+            cctx.fillText('Warmth builds connection', W / 2, H * 0.46);
+          }
+
+          // 10. Bottom bar — GOOD MOVES (left)
+          const moves = gesturesCountRef.current;
+          cctx.textAlign = 'center';
+          cctx.font = `900 ${H * 0.048}px Inter, sans-serif`;
+          cctx.fillStyle = '#00ff88';
+          cctx.shadowColor = 'rgba(0,255,136,0.4)';
+          cctx.shadowBlur = 10;
+          cctx.fillText(String(moves), W * 0.1, H * 0.928);
+          cctx.shadowBlur = 0;
+          cctx.font = `700 ${H * 0.017}px Inter, sans-serif`;
+          cctx.fillStyle = '#555566';
+          cctx.fillText('GOOD MOVES', W * 0.1, H * 0.962);
+
+          // 11. Bottom bar — Timer (right)
+          const elapsed = elapsedRef.current;
+          const mins = Math.floor(elapsed / 60);
+          const secs = elapsed % 60;
+          const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+          cctx.font = `700 ${H * 0.034}px monospace`;
+          cctx.fillStyle = '#ffffff';
+          cctx.textAlign = 'center';
+          cctx.fillText(timeStr, W * 0.9, H * 0.928);
+          cctx.font = `700 ${H * 0.017}px Inter, sans-serif`;
+          cctx.fillStyle = '#555566';
+          cctx.fillText('TIME', W * 0.9, H * 0.962);
+
+          // 12. REC indicator (bottom center-left) when recording
+          if (isRecordingRef.current) {
+            cctx.textAlign = 'center';
+            const pulse = Math.sin(Date.now() / 400) > 0; // blink
+            cctx.fillStyle = pulse ? '#ff5050' : 'rgba(255,80,80,0.3)';
+            cctx.beginPath();
+            cctx.arc(W * 0.5 - 30, H * 0.943, H * 0.012, 0, Math.PI * 2);
+            cctx.fill();
+            cctx.font = `700 ${H * 0.017}px Inter, sans-serif`;
+            cctx.fillStyle = '#ff5050';
+            cctx.textAlign = 'left';
+            cctx.fillText('REC', W * 0.5 - 14, H * 0.948);
+          }
         }
       }
 
@@ -586,6 +715,11 @@ export default function PracticeScreen() {
   detectSmileRef.current = detectSmile;
   impactRef.current = state.impact;
   isSlouchingRef.current = state.isSlouching;
+  gestureRef.current = state.gesture;
+  elapsedRef.current = state.elapsed;
+  gesturesCountRef.current = state.gestures;
+  streakRef.current = state.streak;
+  isRecordingRef.current = isRecording;
 
   const gestureColor = GESTURE_COLORS[state.gesture] ?? '#00f0ff';
 
@@ -865,7 +999,7 @@ export default function PracticeScreen() {
 
       {/* ── COACH TIPS ── */}
       <div className="absolute left-4 right-4 z-20" style={{ bottom: '160px' }}>
-        <div className="flex flex-col items-start gap-2">
+        <div className="flex flex-col items-start gap-2" style={{ transform: 'scale(1.22)', transformOrigin: 'bottom left' }}>
           <AnimatePresence mode="popLayout">
             {state.tips.map((tip, i) => (
               <TipBubble key={tip.id} text={tip.text} icon={tip.icon} delay={i * 0.1} tipId={tip.id} />
