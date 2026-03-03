@@ -234,3 +234,29 @@ main {
 .high-impact {
   animation: impact-glow 0.8s ease-in-out infinite;
 }
+
+/* Coach tips scaling — natural size on phone, enlarged on desktop */
+@media (min-width: 640px) {
+  .coach-tips-scale {
+    transform: scale(1.22);
+    transform-origin: bottom left;
+  }
+}
+
+/* ── Mobile coach tip overrides ── */
+@media (max-width: 639px) {
+  .tip-bubble {
+    padding: 8px 12px !important;
+    max-width: 78vw !important;
+  }
+  .tip-bubble-text {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+  .tip-illustration {
+    display: none !important;
+  }
+  .tip-secondary {
+    display: none !important;
+  }
+}

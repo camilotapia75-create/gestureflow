@@ -252,10 +252,13 @@ export function analyzeGesture(landmarks: Point[]): GestureResult {
     gesture = 'STEEPLE';
   } else if (isAsymmetric) {
     gesture = 'POINTING';
-  } else if (impact > 45) {
+  } else if (impact > 30) {
     gesture = 'EMPHASIS';
   } else if (postureScore > 60 && !handsAboveWaist) {
     gesture = 'WIDE STANCE';
+  } else if (handsAboveWaist || impact > 15) {
+    // Catch-all: any sign of engagement avoids a false REST
+    gesture = 'EMPHASIS';
   }
 
   const isPowerMove = gesture === 'POWER POSE' || gesture === 'OPEN GESTURE';

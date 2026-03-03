@@ -172,7 +172,7 @@ function PoseIllustration({ tipId }: { tipId: string }) {
 
   return (
     <div
-      className="flex-shrink-0 rounded-xl flex items-center justify-center ml-1"
+      className="tip-illustration flex-shrink-0 rounded-xl flex items-center justify-center ml-1"
       style={{ width: 52, height: 58, background: `${c}09`, border: `1px solid ${c}22` }}
     >
       <svg viewBox="-6 0 68 68" width="44" height="50" overflow="visible"
@@ -184,14 +184,14 @@ function PoseIllustration({ tipId }: { tipId: string }) {
 }
 
 // ── Coach tip bubble ──────────────────────────────────────────────────────
-function TipBubble({ text, icon, delay = 0, tipId }: { text: string; icon: string; delay?: number; tipId?: string }) {
+function TipBubble({ text, icon, delay = 0, tipId, secondary }: { text: string; icon: string; delay?: number; tipId?: string; secondary?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -10, scale: 0.9 }}
       transition={{ duration: 0.45, delay, ease: [0.34, 1.56, 0.64, 1] }}
-      className="flex items-center gap-3.5 px-6 py-5 rounded-2xl max-w-lg"
+      className={`tip-bubble${secondary ? ' tip-secondary' : ''} flex items-center gap-2 px-6 py-5 rounded-2xl max-w-lg`}
       style={{
         background: 'rgba(8,8,22,0.92)',
         border: '1px solid rgba(0,240,255,0.22)',
@@ -199,8 +199,8 @@ function TipBubble({ text, icon, delay = 0, tipId }: { text: string; icon: strin
         boxShadow: '0 4px 32px rgba(0,0,0,0.7)',
       }}
     >
-      <Lightbulb size={20} style={{ color: '#00f0ff', flexShrink: 0 }} />
-      <span className="flex-1 text-base text-gray-100 leading-snug font-medium">
+      <Lightbulb size={16} className="sm:w-5 sm:h-5" style={{ color: '#00f0ff', flexShrink: 0 }} />
+      <span className="tip-bubble-text flex-1 text-base text-gray-100 leading-snug font-medium">
         <span className="mr-1.5 text-lg">{icon}</span>
         {text}
       </span>
@@ -1001,10 +1001,10 @@ export default function PracticeScreen() {
 
       {/* ── COACH TIPS ── */}
       <div className="absolute left-4 right-4 z-20" style={{ bottom: '160px' }}>
-        <div className="flex flex-col items-start gap-2" style={{ transform: 'scale(1.22)', transformOrigin: 'bottom left' }}>
+        <div className="flex flex-col items-start gap-2 coach-tips-scale">
           <AnimatePresence mode="popLayout">
             {state.tips.map((tip, i) => (
-              <TipBubble key={tip.id} text={tip.text} icon={tip.icon} delay={i * 0.1} tipId={tip.id} />
+              <TipBubble key={tip.id} text={tip.text} icon={tip.icon} delay={i * 0.1} tipId={tip.id} secondary={i > 0} />
             ))}
           </AnimatePresence>
         </div>
