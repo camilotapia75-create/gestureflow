@@ -191,7 +191,7 @@ function TipBubble({ text, icon, delay = 0, tipId, secondary }: { text: string; 
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -10, scale: 0.9 }}
       transition={{ duration: 0.45, delay, ease: [0.34, 1.56, 0.64, 1] }}
-      className={`tip-bubble${secondary ? ' tip-secondary' : ''} flex items-center gap-2 px-6 py-5 rounded-2xl max-w-lg`}
+      className={`${secondary ? 'hidden sm:flex' : 'flex'} items-center gap-1.5 sm:gap-3 px-3 py-2 sm:px-6 sm:py-5 rounded-xl sm:rounded-2xl max-w-[70vw] sm:max-w-lg`}
       style={{
         background: 'rgba(8,8,22,0.92)',
         border: '1px solid rgba(0,240,255,0.22)',
@@ -199,12 +199,12 @@ function TipBubble({ text, icon, delay = 0, tipId, secondary }: { text: string; 
         boxShadow: '0 4px 32px rgba(0,0,0,0.7)',
       }}
     >
-      <Lightbulb size={16} className="sm:w-5 sm:h-5" style={{ color: '#00f0ff', flexShrink: 0 }} />
-      <span className="tip-bubble-text flex-1 text-base text-gray-100 leading-snug font-medium">
-        <span className="mr-1.5 text-lg">{icon}</span>
+      <Lightbulb size={13} className="sm:!w-[18px] sm:!h-[18px] flex-shrink-0" style={{ color: '#00f0ff' }} />
+      <span className="flex-1 text-[11px] sm:text-base text-gray-100 leading-snug font-medium">
+        <span className="mr-1 text-xs sm:text-lg">{icon}</span>
         {text}
       </span>
-      <PoseIllustration tipId={tipId ?? ''} />
+      <div className="hidden sm:block"><PoseIllustration tipId={tipId ?? ''} /></div>
     </motion.div>
   );
 }
