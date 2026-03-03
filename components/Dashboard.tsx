@@ -22,6 +22,7 @@ import { loadStats, formatTime, StoredStats } from '@/lib/storage';
 import { loadUserStats, loadSessionsFromDb, type DbSession } from '@/lib/db';
 import { useUser } from '@/hooks/useUser';
 import { createClient } from '@/lib/supabase';
+import BottomNav from './BottomNav';
 
 // ── Stat Card ─────────────────────────────────────────────────────────────
 function StatCard({
@@ -211,7 +212,7 @@ export default function Dashboard() {
 
   return (
     <div className="page-scroll cyber-bg scanline">
-      <div className="min-h-full px-5 pt-safe pb-8 flex flex-col">
+      <div className="min-h-full px-5 pt-safe pb-28 flex flex-col">
 
         {/* ── Top bar ── */}
         <motion.div
@@ -418,6 +419,8 @@ export default function Dashboard() {
           </motion.button>
         </motion.div>
       </div>
+
+      <BottomNav />
     </div>
   );
 }
