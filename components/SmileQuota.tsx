@@ -253,14 +253,15 @@ export default function SmileQuota() {
   }, []);
 
   // ── Settings helpers ───────────────────────────────────────────────────
+  // NOTE: keep side-effects (saveSettings, scheduleNotification) outside the
+  // setSettings updater — React StrictMode calls updaters twice, which would
+  // cancel the scheduled timeout immediately.
   function updateSettings(patch: Partial<SmileSettings>) {
-    setSettings((prev) => {
-      const next = { ...prev, ...patch };
-      saveSettings(next);
-      const currentData = loadSmileData();
-      scheduleNotification(next, currentData.count);
-      return next;
-    });
+    const next = { ...settings, ...patch };
+    saveSettings(next);
+    setSettings(next);
+    const currentData = loadSmileData();
+    scheduleNotification(next, currentData.count);
   }
 
   async function toggleNotifications() {
@@ -268,7 +269,20 @@ export default function SmileQuota() {
       updateSettings({ notificationsEnabled: false });
     } else {
       const granted = await requestNotifPermission();
-      if (granted) updateSettings({ notificationsEnabled: true });
+      if (granted) {
+        updateSettings({ notificationsEnabled: true });
+        // Fire a confirmation notification immediately so the user knows it works
+        setTimeout(() => {
+          const d = loadSmileData();
+          new Notification('Reminders are on! 😊', {
+            body: `You'll be reminded at ${settings.reminderTime} if you haven't hit your quota.`,
+            icon: '/icon-192.png',
+            tag: 'smile-quota-confirm',
+          });
+          // Schedule the real daily reminder too
+          scheduleNotification({ ...settings, notificationsEnabled: true }, d.count);
+        }, 800);
+      }
     }
   }
 
@@ -536,6 +550,16 @@ export default function SmileQuota() {
 
           {cameraState === 'idle' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6">
+              {/* Skeleton shimmer bars — hint that content will load */}
+              <div className="absolute top-4 left-5 right-5 flex flex-col gap-2 pointer-events-none">
+                <div className="skeleton h-1.5 w-3/4 rounded-full opacity-40" />
+                <div className="skeleton h-1.5 w-1/2 rounded-full opacity-25" />
+              </div>
+              <div className="absolute bottom-4 left-5 right-5 flex flex-col gap-2 pointer-events-none">
+                <div className="skeleton h-1.5 w-2/3 rounded-full opacity-30" />
+                <div className="skeleton h-1.5 w-2/5 rounded-full opacity-20" />
+              </div>
+
               <motion.div
                 animate={{ scale: [1, 1.06, 1] }}
                 transition={{ duration: 2.2, repeat: Infinity }}
@@ -590,7 +614,8 @@ export default function SmileQuota() {
                 style={{ borderColor: '#00f0ff', borderTopColor: 'transparent' }}
               />
               <p className="text-xs text-gray-300 font-medium">Loading smile AI…</p>
-              <div className="skeleton w-32 h-1.5 rounded-full" />
+              <div className="skeleton w-36 h-2 rounded-full" />
+              <div className="skeleton w-24 h-1.5 rounded-full opacity-60" />
             </div>
           )}
 
