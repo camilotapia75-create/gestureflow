@@ -328,7 +328,8 @@ export default function SmileQuota() {
       canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        const landmarks = detectPose(video, now);
+        const poseResult = detectPose(video, now);
+        const landmarks = poseResult?.landmarks[0] ?? null;
         if (landmarks && landmarks.length > 0) {
           drawGlowingSkeleton(ctx, landmarks, canvas.width, canvas.height, 0, false);
         } else {

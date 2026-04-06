@@ -88,7 +88,8 @@ export default function OfficeErgonomics() {
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
 
-    const landmarks = detect(video, performance.now());
+    const poseResult = detect(video, performance.now());
+    const landmarks = poseResult?.landmarks[0] ?? null;
 
     if (landmarks && landmarks.length > 0) {
       const result = analyzeGesture(landmarks);
