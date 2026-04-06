@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Camera, Settings, Bell, BellOff } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useFaceLandmarker } from '@/hooks/useFaceLandmarker';
+import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
+import { drawGlowingSkeleton } from '@/lib/gestureAnalysis';
 import BottomNav from './BottomNav';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -199,9 +201,11 @@ function statusMsg(count: number, mode: SessionMode, superActive: boolean, super
 export default function SmileQuota() {
   const router = useRouter();
   const { isReady, detectSmile } = useFaceLandmarker();
+  const { detect: detectPose, isReady: poseReady } = usePoseLandmarker();
 
   // DOM / RAF refs
   const videoRef           = useRef<HTMLVideoElement>(null);
+  const canvasRef          = useRef<HTMLCanvasElement>(null);
   const streamRef          = useRef<MediaStream | null>(null);
   const rafRef             = useRef<number | null>(null);
   const lastCountedRef     = useRef<number>(0);
@@ -317,6 +321,22 @@ export default function SmileQuota() {
     const score   = detectSmile(video, now);
     const smiling = score >= SMILE_THRESHOLD;
 
+    // Draw skeleton overlay
+    const canvas = canvasRef.current;
+    if (canvas && poseReady) {
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const landmarks = detectPose(video, now);
+        if (landmarks && landmarks.length > 0) {
+          drawGlowingSkeleton(ctx, landmarks, canvas.width, canvas.height, 0, false);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+    }
+
     setIsSmiling(smiling);
 
     if (smiling) {
@@ -373,7 +393,7 @@ export default function SmileQuota() {
     }
 
     rafRef.current = requestAnimationFrame(runLoop);
-  }, [isReady, detectSmile, cameraState]);
+  }, [isReady, detectSmile, cameraState, poseReady, detectPose]);
 
   useEffect(() => {
     if (cameraState !== 'granted') return;
@@ -545,6 +565,11 @@ export default function SmileQuota() {
             className="camera-feed w-full h-full object-cover"
             playsInline
             muted
+            style={{ display: cameraState === 'granted' ? 'block' : 'none' }}
+          />
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none"
             style={{ display: cameraState === 'granted' ? 'block' : 'none' }}
           />
 

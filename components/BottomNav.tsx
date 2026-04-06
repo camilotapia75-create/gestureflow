@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Home, Smile, Monitor } from 'lucide-react';
 
 const TABS = [
-  { label: 'Home',   icon: Home,    path: '/' },
+  { label: 'Present', icon: Home,    path: '/' },
   { label: 'Office', icon: Monitor, path: '/office' },
   { label: 'Smile',  icon: Smile,   path: '/smile' },
 ] as const;
@@ -40,11 +40,11 @@ export default function BottomNav() {
                   boxShadow:  active ? '0 0 12px rgba(0,240,255,0.15)' : 'none',
                 }}
               >
-                <Icon size={20} style={{ color: active ? '#00f0ff' : '#44445a' }} />
+                <Icon size={20} style={{ color: active ? '#00f0ff' : '#9ca3af' }} />
               </div>
               <span
                 className="text-[10px] font-semibold tracking-wide transition-colors duration-200"
-                style={{ color: active ? '#00f0ff' : '#44445a' }}
+                style={{ color: active ? '#00f0ff' : '#9ca3af' }}
               >
                 {label}
               </span>
