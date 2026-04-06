@@ -1,11 +1,12 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, Smile } from 'lucide-react';
+import { Home, Smile, Monitor } from 'lucide-react';
 
 const TABS = [
-  { label: 'Home',  icon: Home,  path: '/' },
-  { label: 'Smile', icon: Smile, path: '/smile' },
+  { label: 'Home',   icon: Home,    path: '/' },
+  { label: 'Office', icon: Monitor, path: '/office' },
+  { label: 'Smile',  icon: Smile,   path: '/smile' },
 ] as const;
 
 export default function BottomNav() {
