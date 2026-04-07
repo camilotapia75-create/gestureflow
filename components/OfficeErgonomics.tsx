@@ -60,10 +60,10 @@ function isSlouching(
   if (!r) return false;
 
   if (!cal) {
-    // No calibration — only flag very obvious cases (BOTH signals)
-    const headBad     = r.headDrop < 1.2;
-    const shoulderBad = r.shoulderEye !== null && r.shoulderEye < 3.2;
-    return headBad && shoulderBad;
+    // Uncalibrated: use either signal with moderate thresholds
+    const headBad     = r.headDrop < 1.5;
+    const shoulderBad = r.shoulderEye !== null && r.shoulderEye < 3.8;
+    return headBad || shoulderBad;
   }
 
   const headBad     = r.headDrop < cal.headDrop - HEAD_DROP_SLACK;
@@ -287,8 +287,8 @@ export default function OfficeErgonomics() {
         <h1 className="text-xl font-bold gradient-text">Office Ergonomics</h1>
       </div>
 
-      {/* Camera */}
-      <div className="relative mx-4 rounded-2xl overflow-hidden bg-black/60 border border-cyan-900/40" style={{ aspectRatio: '4/3' }}>
+      {/* Camera — capped at 42vh so controls always fit below */}
+      <div className="relative mx-4 rounded-2xl overflow-hidden bg-black/60 border border-cyan-900/40" style={{ aspectRatio: '4/3', maxHeight: '42vh' }}>
         <video ref={videoRef} className="camera-feed absolute inset-0 w-full h-full object-cover" playsInline muted />
         <canvas ref={canvasRef} className="camera-feed absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }} />
 
@@ -338,56 +338,65 @@ export default function OfficeErgonomics() {
         )}
       </div>
 
-      {/* Calibrate CTA */}
-      {cameraState === 'granted' && !isCalibrating && (
-        <div className="mx-4 mt-3 glass-card rounded-xl p-4 flex items-center justify-between">
+      {/* ── Always-visible controls panel ── */}
+      <div className="mx-4 mt-3 space-y-2">
+
+        {/* Calibrate — big prominent row */}
+        <div
+          className="glass-card rounded-2xl px-4 py-3 flex items-center justify-between"
+          style={{ border: calibration ? '1px solid rgba(0,240,255,0.3)' : '1px solid rgba(255,180,0,0.5)', background: calibration ? undefined : 'rgba(255,160,0,0.08)' }}
+        >
           <div>
-            <p className="text-sm font-medium text-slate-200">Calibrate posture</p>
-            <p className="text-xs text-slate-400">{calibration ? 'Calibrated ✓ — tap to redo' : 'Sit up straight, then tap to capture your baseline'}</p>
+            <p className="text-sm font-bold text-white">
+              {calibration ? '✓ Posture calibrated' : '⚠️ Calibrate first'}
+            </p>
+            <p className="text-xs text-slate-400">
+              {calibration ? 'Tap to re-capture your upright baseline' : 'Sit up straight, tap to capture your good-posture baseline'}
+            </p>
           </div>
-          <button onClick={startCalibration} className="px-4 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-semibold">
-            {calibration ? 'Re-calibrate' : 'Calibrate'}
-          </button>
+          {cameraState === 'granted' && !isCalibrating && (
+            <button
+              onClick={startCalibration}
+              className="ml-3 shrink-0 px-4 py-2 rounded-xl font-bold text-xs text-black"
+              style={{ background: calibration ? 'rgba(0,240,255,0.8)' : 'linear-gradient(135deg,#fbbf24,#f59e0b)' }}
+            >
+              {calibration ? 'Re-calibrate' : 'Calibrate'}
+            </button>
+          )}
+          {cameraState !== 'granted' && (
+            <span className="text-xs text-slate-500 ml-3">Start camera first</span>
+          )}
         </div>
-      )}
 
-      {/* Stats */}
-      <div className="mx-4 mt-3 grid grid-cols-2 gap-3">
-        <div className="glass-card rounded-xl p-4 flex flex-col gap-1">
-          <span className="text-xs text-slate-400 uppercase tracking-wider">Alerts today</span>
-          <span className="text-3xl font-bold gradient-text">{alertCount}</span>
-        </div>
-        <div className="glass-card rounded-xl p-4 flex flex-col gap-1">
-          <span className="text-xs text-slate-400 uppercase tracking-wider">Last alert</span>
-          <span className="text-sm font-medium text-slate-300 mt-1">{timeSinceAlert !== null ? `${timeSinceAlert}s ago` : '—'}</span>
-        </div>
-      </div>
-
-      {/* Voice toggle + profile picker */}
-      <div className="mx-4 mt-3 glass-card rounded-xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-200">Voice alert</p>
-            <p className="text-xs text-slate-400">"Sit up, please" after 2s of slouching</p>
+        {/* Stats + voice toggle in one row */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="glass-card rounded-xl p-3 flex flex-col gap-0.5">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Alerts</span>
+            <span className="text-2xl font-bold gradient-text">{alertCount}</span>
+          </div>
+          <div className="glass-card rounded-xl p-3 flex flex-col gap-0.5">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Last</span>
+            <span className="text-xs font-medium text-slate-300 mt-1">{timeSinceAlert !== null ? `${timeSinceAlert}s ago` : '—'}</span>
           </div>
           <button
             onClick={() => setVoiceEnabled(v => !v)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${voiceEnabled ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-white/5 border-white/10 text-slate-400'}`}
+            className={`glass-card rounded-xl p-3 flex flex-col items-center justify-center gap-1 border transition-all ${voiceEnabled ? 'border-cyan-500/40 text-cyan-300' : 'border-white/10 text-slate-400'}`}
           >
-            {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            <span className="text-xs font-medium">{voiceEnabled ? 'On' : 'Off'}</span>
+            {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            <span className="text-[10px] font-semibold">{voiceEnabled ? 'Voice On' : 'Voice Off'}</span>
           </button>
         </div>
 
-        {voiceEnabled && (
-          <div className="grid grid-cols-2 gap-2">
+        {/* Voice profile picker — always visible */}
+        <div className="glass-card rounded-2xl p-3">
+          <p className="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">Voice Style</p>
+          <div className="grid grid-cols-2 gap-1.5">
             {VOICE_PROFILES.map(p => (
               <button
                 key={p.id}
                 onClick={() => {
                   setVoiceId(p.id);
                   localStorage.setItem(VOICE_STORAGE_KEY, p.id);
-                  // Preview
                   if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
                     const u = new SpeechSynthesisUtterance('Sit up, please');
@@ -400,23 +409,16 @@ export default function OfficeErgonomics() {
                 className={`px-3 py-2 rounded-xl border text-left transition-all ${
                   voiceId === p.id
                     ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-slate-200'
+                    : 'bg-white/5 border-white/10 text-slate-400'
                 }`}
               >
                 <p className="text-xs font-semibold leading-tight">{p.label.split(' — ')[0]}</p>
-                <p className="text-[10px] opacity-70">{p.label.split(' — ')[1]}</p>
+                <p className="text-[10px] opacity-60">{p.label.split(' — ')[1]}</p>
               </button>
             ))}
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Tips */}
-      <div className="mx-4 mt-3 glass-card rounded-xl p-4 space-y-2">
-        <p className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Tips</p>
-        {['Keep your back straight and shoulders level.', 'Screen at or just below eye level.', 'Feet flat on the floor or on a footrest.', 'Stretch every 30 minutes.'].map(t => (
-          <p key={t} className="text-xs text-slate-300 leading-relaxed">• {t}</p>
-        ))}
       </div>
     </div>
   );
