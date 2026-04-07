@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Monitor, Volume2, VolumeX, CheckCircle2, AlertTriangle, ScanLine } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Monitor, Volume2, VolumeX, CheckCircle2, AlertTriangle, ScanLine, ArrowLeft } from 'lucide-react';
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
 import { drawGlowingSkeleton } from '@/lib/gestureAnalysis';
 
@@ -165,6 +166,7 @@ export default function OfficeErgonomics() {
   const [lastAlertTime, setLastAlertTime] = useState<number | null>(null);
   const [calProgress,   setCalProgress]   = useState(0);
 
+  const router = useRouter();
   const { detect, isReady } = usePoseLandmarker();
 
   // Load persisted calibration + voice
@@ -337,6 +339,13 @@ export default function OfficeErgonomics() {
     <div className="cyber-bg flex flex-col" style={{ height: '100dvh' }}>
       {/* Header */}
       <div className="pt-safe px-4 pt-4 pb-2 flex items-center gap-3 shrink-0">
+        <button
+          onClick={() => router.push('/')}
+          className="w-10 h-10 rounded-xl flex items-center justify-center btn-press"
+          style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          <ArrowLeft size={18} className="text-gray-400" />
+        </button>
         <Monitor className="text-cyan-400" size={20} />
         <h1 className="text-lg font-bold gradient-text">Office Ergonomics</h1>
       </div>
