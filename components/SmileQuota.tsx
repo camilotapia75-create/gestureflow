@@ -7,7 +7,64 @@ import { ArrowLeft, Camera, Settings, Bell, BellOff } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useFaceLandmarker } from '@/hooks/useFaceLandmarker';
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
-import { drawGlowingSkeleton } from '@/lib/gestureAnalysis';
+
+// Upper-body skeleton, green when smiling — mirrors internally same as drawGlowingSkeleton
+function drawSmileSkeleton(
+  ctx: CanvasRenderingContext2D,
+  lm: { x: number; y: number; visibility?: number }[],
+  w: number, h: number,
+  smiling: boolean
+) {
+  ctx.clearRect(0, 0, w, h);
+  if (!lm || lm.length < 17) return;
+
+  const color = smiling ? '#00ff88' : 'rgba(0,200,255,0.45)';
+  const glow  = smiling ? 22 : 6;
+
+  ctx.save();
+  // Same internal mirror as drawGlowingSkeleton so skeleton aligns with camera-feed video
+  ctx.translate(w, 0);
+  ctx.scale(-1, 1);
+
+  ctx.shadowBlur  = glow;
+  ctx.shadowColor = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = smiling ? 3 : 1.5;
+  ctx.lineCap     = 'round';
+
+  // Upper body only — face, shoulders, arms (no legs)
+  const connections: [number, number][] = [
+    [0, 1], [1, 2], [2, 3], [3, 7],  // face left
+    [0, 4], [4, 5], [5, 6], [6, 8],  // face right
+    [9, 10],                           // mouth
+    [11, 12],                          // shoulders
+    [11, 13], [13, 15],               // left arm
+    [12, 14], [14, 16],               // right arm
+  ];
+
+  for (const [a, b] of connections) {
+    const lmA = lm[a], lmB = lm[b];
+    if (!lmA || !lmB) continue;
+    if ((lmA.visibility ?? 1) < 0.25 || (lmB.visibility ?? 1) < 0.25) continue;
+    ctx.beginPath();
+    ctx.moveTo(lmA.x * w, lmA.y * h);
+    ctx.lineTo(lmB.x * w, lmB.y * h);
+    ctx.stroke();
+  }
+
+  // Key joints as dots
+  ctx.fillStyle  = color;
+  ctx.shadowBlur = glow * 1.5;
+  for (const i of [0, 11, 12, 13, 14, 15, 16]) {
+    const p = lm[i];
+    if (!p || (p.visibility ?? 1) < 0.3) continue;
+    ctx.beginPath();
+    ctx.arc(p.x * w, p.y * h, smiling ? 4 : 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
 import BottomNav from './BottomNav';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -321,20 +378,18 @@ export default function SmileQuota() {
     const score   = detectSmile(video, now);
     const smiling = score >= SMILE_THRESHOLD;
 
-    // Draw skeleton overlay
+    // Draw smile skeleton overlay
     const canvas = canvasRef.current;
     if (canvas && poseReady) {
-      canvas.width  = video.videoWidth  || 640;
-      canvas.height = video.videoHeight || 480;
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width  = video.videoWidth  || 640;
+        canvas.height = video.videoHeight || 480;
+      }
       const ctx = canvas.getContext('2d');
       if (ctx) {
         const poseResult = detectPose(video, now);
-        const landmarks = poseResult?.landmarks[0] ?? null;
-        if (landmarks && landmarks.length > 0) {
-          drawGlowingSkeleton(ctx, landmarks, canvas.width, canvas.height, 0, false);
-        } else {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        const landmarks  = poseResult?.landmarks[0] ?? null;
+        drawSmileSkeleton(ctx, landmarks ?? [], canvas.width, canvas.height, smiling);
       }
     }
 
@@ -570,7 +625,7 @@ export default function SmileQuota() {
           />
           <canvas
             ref={canvasRef}
-            className="absolute inset-0 w-full h-full pointer-events-none"
+            className="camera-feed absolute inset-0 w-full h-full pointer-events-none"
             style={{ display: cameraState === 'granted' ? 'block' : 'none' }}
           />
 
