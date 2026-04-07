@@ -25,6 +25,10 @@ const VOICE_PROFILES = [
   { id: 'au-m',  label: 'Jack — Australian Male',    lang: 'en-AU', pitch: 0.88, rate: 0.88, prefer: /gordon|google aus.*mal/i },
   { id: 'in-f',  label: 'Priya — Indian Female',     lang: 'en-IN', pitch: 1.1,  rate: 0.88, prefer: /heera|priya|google ind.*fem/i },
   { id: 'in-m',  label: 'Rajan — Indian Male',       lang: 'en-IN', pitch: 0.88, rate: 0.88, prefer: /rajan|google ind.*mal/i },
+  { id: 'us-f2', label: 'Aria — US Soft Female',     lang: 'en-US', pitch: 1.25, rate: 0.82, prefer: /aria|victoria|allison|susan/i },
+  { id: 'us-m2', label: 'Coach — US Deep Male',      lang: 'en-US', pitch: 0.72, rate: 0.82, prefer: /fred|tom|bruce|ralph/i },
+  { id: 'ie-f',  label: 'Niamh — Irish Female',      lang: 'en-IE', pitch: 1.1,  rate: 0.88, prefer: /moira|fiona|google ire/i },
+  { id: 'za-f',  label: 'Lerato — S. African Female',lang: 'en-ZA', pitch: 1.08, rate: 0.88, prefer: /google south|tessa/i },
 ] as const;
 type VoiceId = typeof VOICE_PROFILES[number]['id'];
 
