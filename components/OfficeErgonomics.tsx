@@ -29,6 +29,12 @@ const VOICE_PROFILES = [
   { id: 'us-m2', label: 'Coach — US Deep Male',      lang: 'en-US', pitch: 0.72, rate: 0.82, prefer: /fred|tom|bruce|ralph/i },
   { id: 'ie-f',  label: 'Niamh — Irish Female',      lang: 'en-IE', pitch: 1.1,  rate: 0.88, prefer: /moira|fiona|google ire/i },
   { id: 'za-f',  label: 'Lerato — S. African Female',lang: 'en-ZA', pitch: 1.08, rate: 0.88, prefer: /google south|tessa/i },
+  // ── Sound effects ──
+  { id: 'sfx-cat',  label: '🐱 Cat — Meow',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
+  { id: 'sfx-dog',  label: '🐶 Dog — Woof',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
+  { id: 'sfx-duck', label: '🦆 Duck — Quack', lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
+  { id: 'sfx-cow',  label: '🐄 Cow — Moo',    lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
+  { id: 'sfx-fart', label: '💨 Fart',          lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
 ] as const;
 type VoiceId = typeof VOICE_PROFILES[number]['id'];
 
@@ -74,6 +80,62 @@ function isSlouching(
   const shoulderBad = r.shoulderEye !== null && r.shoulderEye < cal.shoulderEye - SHOULDER_SLACK;
   // Require BOTH to avoid false positives
   return headBad && shoulderBad;
+}
+
+// ── Web Audio sound effects ───────────────────────────────────────────────────
+function playSfx(id: string) {
+  const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  if (!AC) return;
+  const ctx = new AC();
+
+  const osc = (type: OscillatorType, freq: number) => {
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq; return o;
+  };
+  const gain = (vol: number) => { const g = ctx.createGain(); g.gain.value = vol; return g; };
+  const now = ctx.currentTime;
+
+  if (id === 'sfx-cat') {
+    const o = osc('sine', 650); const g = gain(0.35);
+    o.frequency.setValueAtTime(650, now);
+    o.frequency.linearRampToValueAtTime(1050, now + 0.12);
+    o.frequency.linearRampToValueAtTime(780, now + 0.38);
+    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.35, now + 0.05);
+    g.gain.linearRampToValueAtTime(0, now + 0.5);
+    o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.5);
+
+  } else if (id === 'sfx-dog') {
+    [0, 0.22].forEach(t => {
+      const o = osc('sawtooth', 160); const g = gain(0);
+      o.frequency.linearRampToValueAtTime(120, now + t + 0.14);
+      g.gain.setValueAtTime(0.45, now + t); g.gain.exponentialRampToValueAtTime(0.01, now + t + 0.18);
+      o.connect(g); g.connect(ctx.destination); o.start(now + t); o.stop(now + t + 0.2);
+    });
+
+  } else if (id === 'sfx-duck') {
+    const o = osc('sawtooth', 900); const g = gain(0.3);
+    const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1200; filter.Q.value = 3;
+    o.frequency.setValueAtTime(900, now); o.frequency.linearRampToValueAtTime(620, now + 0.08);
+    o.frequency.linearRampToValueAtTime(820, now + 0.18); o.frequency.linearRampToValueAtTime(580, now + 0.28);
+    g.gain.setValueAtTime(0.3, now); g.gain.linearRampToValueAtTime(0, now + 0.32);
+    o.connect(filter); filter.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.35);
+
+  } else if (id === 'sfx-cow') {
+    const o = osc('sawtooth', 95); const g = gain(0);
+    o.frequency.setValueAtTime(95, now); o.frequency.linearRampToValueAtTime(125, now + 0.5);
+    o.frequency.linearRampToValueAtTime(100, now + 1.0);
+    g.gain.linearRampToValueAtTime(0.4, now + 0.1); g.gain.setValueAtTime(0.4, now + 0.85);
+    g.gain.linearRampToValueAtTime(0, now + 1.1);
+    o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 1.15);
+
+  } else if (id === 'sfx-fart') {
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.6, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.sin(i / data.length * Math.PI);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 280;
+    const g = gain(0.7);
+    src.connect(lp); lp.connect(g); g.connect(ctx.destination); src.start(now); src.stop(now + 0.6);
+  }
 }
 
 // ── Resolve best matching browser voice ──────────────────────────────────────
@@ -142,16 +204,14 @@ export default function OfficeErgonomics() {
 
   const speakAlert = useCallback(() => {
     if (!voiceEnabledRef.current) return;
+    if (voiceIdRef.current.startsWith('sfx-')) { playSfx(voiceIdRef.current); return; }
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance('Sit up, please');
     const profile = VOICE_PROFILES.find(p => p.id === voiceIdRef.current)!;
     const voice   = resolveVoice(voiceIdRef.current);
     if (voice) u.voice = voice;
-    u.lang   = profile.lang;
-    u.pitch  = profile.pitch;
-    u.rate   = profile.rate;
-    u.volume = 1.0;
+    u.lang = profile.lang; u.pitch = profile.pitch; u.rate = profile.rate; u.volume = 1.0;
     window.speechSynthesis.speak(u);
   }, []);
 
@@ -401,7 +461,8 @@ export default function OfficeErgonomics() {
                 onClick={() => {
                   setVoiceId(p.id);
                   localStorage.setItem(VOICE_STORAGE_KEY, p.id);
-                  if ('speechSynthesis' in window) {
+                  if (p.id.startsWith('sfx-')) { playSfx(p.id); }
+                  else if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
                     const u = new SpeechSynthesisUtterance('Sit up, please');
                     const voice = resolveVoice(p.id);
