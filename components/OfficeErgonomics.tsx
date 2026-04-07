@@ -83,14 +83,15 @@ function isSlouching(
   return headBad && shoulderBad;
 }
 
-// ── Real animal sounds via Wikimedia Commons (public domain) ─────────────────
-// Falls back to Web Audio synthesis if the network fetch fails.
+// ── Real animal sounds — served from /public/sounds/ (downloaded at build time) ─
+// scripts/download-sounds.mjs fetches them from Wikimedia Commons during
+// Vercel build so they're on the same origin — zero CORS issues.
 const SFX_URLS: Record<string, string> = {
-  'sfx-cat':  'https://upload.wikimedia.org/wikipedia/commons/2/2a/Cat_meowing_2.ogg',
-  'sfx-dog':  'https://upload.wikimedia.org/wikipedia/commons/2/2b/Bark%2C_Dog%2C_Loud_A.ogg',
-  'sfx-duck': 'https://upload.wikimedia.org/wikipedia/commons/4/47/Sound-of-a-duck.ogg',
-  'sfx-cow':  'https://upload.wikimedia.org/wikipedia/commons/d/d8/Moo.ogg',
-  'sfx-fart': 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Human_Flatulence.ogg',
+  'sfx-cat':  '/sounds/cat.ogg',
+  'sfx-dog':  '/sounds/dog.ogg',
+  'sfx-duck': '/sounds/duck.ogg',
+  'sfx-cow':  '/sounds/cow.ogg',
+  'sfx-fart': '/sounds/fart.ogg',
 };
 
 function playSfxFallback(id: string) {
