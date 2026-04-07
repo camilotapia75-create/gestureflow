@@ -34,8 +34,8 @@ interface Calibration { headDrop: number; shoulderEye: number }
 // HEAD_DROP_SLACK: how much the ratio may fall below baseline before flagging
 // SHOULDER_SLACK:  how much the ratio may fall below baseline before flagging
 // Both signals must trigger simultaneously to avoid false positives.
-const HEAD_DROP_SLACK  = 0.55;
-const SHOULDER_SLACK   = 0.90;
+const HEAD_DROP_SLACK  = 0.28;
+const SHOULDER_SLACK   = 0.50;
 
 function extractRatios(lm: { x: number; y: number; visibility?: number }[]) {
   const vis = (p: typeof lm[0], t = 0.3) => (p?.visibility ?? 1) >= t;
@@ -288,7 +288,7 @@ export default function OfficeErgonomics() {
       </div>
 
       {/* Camera — capped at 42vh so controls always fit below */}
-      <div className="relative mx-4 rounded-2xl overflow-hidden bg-black/60 border border-cyan-900/40" style={{ aspectRatio: '4/3', maxHeight: '42vh' }}>
+      <div className="relative mx-4 rounded-2xl overflow-hidden bg-black/60 border border-cyan-900/40" style={{ aspectRatio: '4/3', maxHeight: '52vh' }}>
         <video ref={videoRef} className="camera-feed absolute inset-0 w-full h-full object-cover" playsInline muted />
         <canvas ref={canvasRef} className="camera-feed absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }} />
 
@@ -390,7 +390,7 @@ export default function OfficeErgonomics() {
         {/* Voice profile picker — always visible */}
         <div className="glass-card rounded-2xl p-3">
           <p className="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">Voice Style</p>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
             {VOICE_PROFILES.map(p => (
               <button
                 key={p.id}
@@ -406,14 +406,14 @@ export default function OfficeErgonomics() {
                     window.speechSynthesis.speak(u);
                   }
                 }}
-                className={`px-3 py-2 rounded-xl border text-left transition-all ${
+                className={`shrink-0 px-3 py-2 rounded-xl border text-left transition-all ${
                   voiceId === p.id
                     ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
                     : 'bg-white/5 border-white/10 text-slate-400'
                 }`}
               >
-                <p className="text-xs font-semibold leading-tight">{p.label.split(' — ')[0]}</p>
-                <p className="text-[10px] opacity-60">{p.label.split(' — ')[1]}</p>
+                <p className="text-xs font-semibold leading-tight whitespace-nowrap">{p.label.split(' — ')[0]}</p>
+                <p className="text-[10px] opacity-60 whitespace-nowrap">{p.label.split(' — ')[1]}</p>
               </button>
             ))}
           </div>
