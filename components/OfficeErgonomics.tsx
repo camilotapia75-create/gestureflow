@@ -345,17 +345,19 @@ export default function OfficeErgonomics() {
   const timeSinceAlert = lastAlertTime ? Math.round((Date.now() - lastAlertTime) / 1000) : null;
 
   return (
-    <div className="cyber-bg min-h-screen flex flex-col pb-28">
-      <div className="pt-safe px-4 pt-6 pb-3 flex items-center gap-3">
-        <Monitor className="text-cyan-400" size={22} />
-        <h1 className="text-xl font-bold gradient-text">Office Ergonomics</h1>
+    <div className="cyber-bg flex flex-col" style={{ height: '100dvh' }}>
+      {/* Header */}
+      <div className="pt-safe px-4 pt-4 pb-2 flex items-center gap-3 shrink-0">
+        <Monitor className="text-cyan-400" size={20} />
+        <h1 className="text-lg font-bold gradient-text">Office Ergonomics</h1>
       </div>
 
-      {/* Camera — capped at 42vh so controls always fit below */}
-      <div className="relative mx-4 rounded-2xl overflow-hidden bg-black/60 border border-cyan-900/40" style={{ aspectRatio: '4/3', maxHeight: '52vh' }}>
+      {/* Camera — fills all remaining space, controls overlay inside */}
+      <div className="relative flex-1 mx-4 mb-20 rounded-2xl overflow-hidden bg-black border border-cyan-900/40">
         <video ref={videoRef} className="camera-feed absolute inset-0 w-full h-full object-cover" playsInline muted />
         <canvas ref={canvasRef} className="camera-feed absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }} />
 
+        {/* Idle / denied */}
         {cameraState !== 'granted' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
             <div className="absolute top-4 left-5 right-5 flex flex-col gap-2 pointer-events-none">
@@ -374,9 +376,9 @@ export default function OfficeErgonomics() {
           </div>
         )}
 
-        {/* Calibration overlay */}
+        {/* Calibration fullscreen overlay */}
         {cameraState === 'granted' && isCalibrating && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 z-20">
             <ScanLine className="text-cyan-400 animate-pulse" size={36} />
             <p className="text-white font-semibold text-sm">Sit up straight and hold…</p>
             <div className="w-48 h-2 rounded-full bg-white/10">
@@ -386,78 +388,63 @@ export default function OfficeErgonomics() {
           </div>
         )}
 
+        {/* Stop button — top right */}
         {cameraState === 'granted' && (
           <button onClick={stopCamera} className="absolute top-3 right-3 z-10 px-3 py-1 rounded-lg bg-black/60 border border-white/10 text-xs text-slate-300">
             Stop
           </button>
         )}
 
+        {/* Posture badge — top left */}
         {cameraState === 'granted' && !isCalibrating && (
-          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/70 border border-white/10">
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/70 border border-white/10">
             {postureState === 'good' ? <CheckCircle2 size={14} className="text-emerald-400" />
               : postureState === 'slouching' ? <AlertTriangle size={14} className="text-red-400 animate-pulse" />
               : <div className="w-3 h-3 rounded-full bg-slate-500" />}
             <span className={`text-xs font-medium ${postureColor}`}>{postureLabel}</span>
           </div>
         )}
-      </div>
 
-      {/* ── Always-visible controls panel ── */}
-      <div className="mx-4 mt-3 space-y-2">
+        {/* ── Bottom overlay: dark gradient + all controls ── */}
+        <div className="absolute bottom-0 left-0 right-0 z-10 px-3 pb-3 pt-16"
+          style={{ background: 'linear-gradient(to top, rgba(2,4,18,0.95) 0%, rgba(2,4,18,0.7) 60%, transparent 100%)' }}>
 
-        {/* Calibrate — big prominent row */}
-        <div
-          className="glass-card rounded-2xl px-4 py-3 flex items-center justify-between"
-          style={{ border: calibration ? '1px solid rgba(0,240,255,0.3)' : '1px solid rgba(255,180,0,0.5)', background: calibration ? undefined : 'rgba(255,160,0,0.08)' }}
-        >
-          <div>
-            <p className="text-sm font-bold text-white">
-              {calibration ? '✓ Posture calibrated' : '⚠️ Calibrate first'}
-            </p>
-            <p className="text-xs text-slate-400">
-              {calibration ? 'Tap to re-capture your upright baseline' : 'Sit up straight, tap to capture your good-posture baseline'}
-            </p>
+          {/* Calibrate row */}
+          <div className="flex items-center justify-between mb-2 px-1">
+            <div>
+              <p className="text-sm font-bold text-white leading-tight">
+                {calibration ? '✓ Posture calibrated' : '⚠️ Calibrate first'}
+              </p>
+              <p className="text-[10px] text-slate-400">
+                {calibration ? 'Tap to redo' : 'Sit up straight, then tap'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Stats inline */}
+              <div className="text-right mr-2">
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Alerts</p>
+                <p className="text-lg font-bold gradient-text leading-tight">{alertCount}</p>
+              </div>
+              {/* Voice toggle */}
+              <button onClick={() => setVoiceEnabled(v => !v)}
+                className={`p-2 rounded-xl border transition-all ${voiceEnabled ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-white/5 border-white/10 text-slate-400'}`}>
+                {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              </button>
+              {/* Calibrate button */}
+              {cameraState === 'granted' && !isCalibrating && (
+                <button onClick={startCalibration}
+                  className="shrink-0 px-3 py-2 rounded-xl font-bold text-xs text-black"
+                  style={{ background: calibration ? 'rgba(0,240,255,0.85)' : 'linear-gradient(135deg,#fbbf24,#f59e0b)' }}>
+                  {calibration ? 'Re-cal' : 'Calibrate'}
+                </button>
+              )}
+            </div>
           </div>
-          {cameraState === 'granted' && !isCalibrating && (
-            <button
-              onClick={startCalibration}
-              className="ml-3 shrink-0 px-4 py-2 rounded-xl font-bold text-xs text-black"
-              style={{ background: calibration ? 'rgba(0,240,255,0.8)' : 'linear-gradient(135deg,#fbbf24,#f59e0b)' }}
-            >
-              {calibration ? 'Re-calibrate' : 'Calibrate'}
-            </button>
-          )}
-          {cameraState !== 'granted' && (
-            <span className="text-xs text-slate-500 ml-3">Start camera first</span>
-          )}
-        </div>
 
-        {/* Stats + voice toggle in one row */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="glass-card rounded-xl p-3 flex flex-col gap-0.5">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Alerts</span>
-            <span className="text-2xl font-bold gradient-text">{alertCount}</span>
-          </div>
-          <div className="glass-card rounded-xl p-3 flex flex-col gap-0.5">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Last</span>
-            <span className="text-xs font-medium text-slate-300 mt-1">{timeSinceAlert !== null ? `${timeSinceAlert}s ago` : '—'}</span>
-          </div>
-          <button
-            onClick={() => setVoiceEnabled(v => !v)}
-            className={`glass-card rounded-xl p-3 flex flex-col items-center justify-center gap-1 border transition-all ${voiceEnabled ? 'border-cyan-500/40 text-cyan-300' : 'border-white/10 text-slate-400'}`}
-          >
-            {voiceEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            <span className="text-[10px] font-semibold">{voiceEnabled ? 'Voice On' : 'Voice Off'}</span>
-          </button>
-        </div>
-
-        {/* Voice profile picker — always visible */}
-        <div className="glass-card rounded-2xl p-3">
-          <p className="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">Voice Style</p>
-          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+          {/* Voice picker — horizontal scroll */}
+          <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
             {VOICE_PROFILES.map(p => (
-              <button
-                key={p.id}
+              <button key={p.id}
                 onClick={() => {
                   setVoiceId(p.id);
                   localStorage.setItem(VOICE_STORAGE_KEY, p.id);
@@ -471,20 +458,17 @@ export default function OfficeErgonomics() {
                     window.speechSynthesis.speak(u);
                   }
                 }}
-                className={`shrink-0 px-3 py-2 rounded-xl border text-left transition-all ${
-                  voiceId === p.id
-                    ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                    : 'bg-white/5 border-white/10 text-slate-400'
-                }`}
-              >
-                <p className="text-xs font-semibold leading-tight whitespace-nowrap">{p.label.split(' — ')[0]}</p>
+                className={`shrink-0 px-3 py-1.5 rounded-xl border text-left transition-all ${
+                  voiceId === p.id ? 'bg-cyan-500/30 border-cyan-500/60 text-cyan-300' : 'bg-black/40 border-white/10 text-slate-300'
+                }`}>
+                <p className="text-xs font-semibold whitespace-nowrap">{p.label.split(' — ')[0]}</p>
                 <p className="text-[10px] opacity-60 whitespace-nowrap">{p.label.split(' — ')[1]}</p>
               </button>
             ))}
           </div>
         </div>
-
       </div>
     </div>
   );
 }
+
