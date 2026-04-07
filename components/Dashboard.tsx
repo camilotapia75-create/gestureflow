@@ -291,6 +291,51 @@ export default function Dashboard() {
           </motion.button>
         )}
 
+        {/* ── CTA ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, type: 'spring', damping: 20 }}
+          className="mb-6"
+        >
+          {/* Tips teaser */}
+          <div
+            className="rounded-2xl p-4 mb-4 flex items-center gap-3"
+            style={{
+              background: 'linear-gradient(135deg, rgba(0,240,255,0.08), rgba(255,0,204,0.06))',
+              border: '1px solid rgba(0,240,255,0.15)',
+            }}
+          >
+            <span className="text-2xl">💡</span>
+            <p className="text-sm text-gray-300 leading-snug">
+              <strong className="text-white">Pro tip:</strong> Open gestures with palms facing out build 40% more audience trust.
+            </p>
+          </div>
+
+          {/* Start button */}
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => router.push('/practice')}
+            className="w-full py-5 rounded-3xl flex items-center justify-center gap-3 font-black text-xl text-[#050510] relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, #00f0ff 0%, #7b2fff 60%, #ff00cc 100%)',
+              boxShadow: '0 0 30px rgba(0,240,255,0.4), 0 8px 32px rgba(0,0,0,0.4)',
+            }}
+          >
+            <motion.div
+              className="absolute inset-0"
+              style={{
+                background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%)',
+                backgroundSize: '200% 100%',
+              }}
+              animate={{ backgroundPosition: ['200% 0', '-200% 0'] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+            />
+            <Play size={22} className="relative z-10" />
+            <span className="relative z-10 tracking-wide">Start Practice</span>
+          </motion.button>
+        </motion.div>
+
         {/* ── Stats grid ── */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           <StatCard
@@ -370,54 +415,6 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* ── Spacer ── */}
-        <div className="flex-1" />
-
-        {/* ── CTA ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, type: 'spring', damping: 20 }}
-        >
-          {/* Tips teaser */}
-          <div
-            className="rounded-2xl p-4 mb-4 flex items-center gap-3"
-            style={{
-              background: 'linear-gradient(135deg, rgba(0,240,255,0.08), rgba(255,0,204,0.06))',
-              border: '1px solid rgba(0,240,255,0.15)',
-            }}
-          >
-            <span className="text-2xl">💡</span>
-            <p className="text-sm text-gray-300 leading-snug">
-              <strong className="text-white">Pro tip:</strong> Open gestures with palms facing out build 40% more audience trust.
-            </p>
-          </div>
-
-          {/* Start button */}
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => router.push('/practice')}
-            className="w-full py-5 rounded-3xl flex items-center justify-center gap-3 font-black text-xl text-[#050510] relative overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, #00f0ff 0%, #7b2fff 60%, #ff00cc 100%)',
-              boxShadow: '0 0 30px rgba(0,240,255,0.4), 0 8px 32px rgba(0,0,0,0.4)',
-            }}
-          >
-            {/* Shimmer overlay */}
-            <motion.div
-              className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%)',
-                backgroundSize: '200% 100%',
-              }}
-              animate={{ backgroundPosition: ['200% 0', '-200% 0'] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
-            />
-            <Play size={22} className="relative z-10" />
-            <span className="relative z-10 tracking-wide">Start Practice</span>
-          </motion.button>
-        </motion.div>
       </div>
 
       <BottomNav />
