@@ -73,13 +73,13 @@ function StatRow({
   );
 }
 
-// Grade is now based on good-posture percentage — a concrete, learnable target
+// Grade is based on good-posture percentage
 function getGrade(posturePercent: number): { grade: string; label: string; color: string } {
-  if (posturePercent >= 80) return { grade: 'S', label: 'Excellent Form', color: '#00f0ff' };
-  if (posturePercent >= 65) return { grade: 'A', label: 'Great Posture', color: '#7b2fff' };
-  if (posturePercent >= 50) return { grade: 'B', label: 'Good Work', color: '#ff00cc' };
-  if (posturePercent >= 30) return { grade: 'C', label: 'Keep Practicing', color: '#ffaa00' };
-  return { grade: 'D', label: 'Sit Up & Smile!', color: '#888' };
+  if (posturePercent >= 80) return { grade: 'A', label: 'Excellent Form',  color: '#00f0ff' };
+  if (posturePercent >= 65) return { grade: 'B', label: 'Great Posture',   color: '#7b2fff' };
+  if (posturePercent >= 50) return { grade: 'C', label: 'Good Work',       color: '#ff00cc' };
+  if (posturePercent >= 30) return { grade: 'D', label: 'Keep Practicing', color: '#ffaa00' };
+  return                           { grade: 'F', label: 'Sit Up & Smile!', color: '#888'    };
 }
 
 export default function SessionSummary({ open, onClose, stats, recordingUrl }: Props) {
