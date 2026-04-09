@@ -167,6 +167,7 @@ export default function OfficeErgonomics() {
   const isCalRef        = useRef(false);
 
   const [cameraState,   setCameraState]   = useState<CameraState>('idle');
+  const [autoStart,     setAutoStart]     = useState(false);
   const [postureState,  setPostureState]  = useState<PostureState>('unknown');
   const [voiceEnabled,  setVoiceEnabled]  = useState(true);
   const [voiceId,       setVoiceId]       = useState<VoiceId>('gb-f');
@@ -339,6 +340,14 @@ export default function OfficeErgonomics() {
     window.speechSynthesis?.cancel();
   }, []);
 
+  // Auto-start camera if user previously opted in
+  useEffect(() => {
+    if (localStorage.getItem('gestureflow_camera_autostart') === 'true') {
+      startCamera();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const postureColor = postureState === 'good' ? 'text-emerald-400' : postureState === 'slouching' ? 'text-red-400' : 'text-slate-400';
   const postureLabel = postureState === 'good' ? 'Good posture' : postureState === 'slouching' ? 'Slouching detected!' : 'Stand by…';
   const timeSinceAlert = lastAlertTime ? Math.round((Date.now() - lastAlertTime) / 1000) : null;
@@ -375,9 +384,26 @@ export default function OfficeErgonomics() {
               {cameraState === 'denied' ? 'Camera access denied.' : 'Enable camera to start posture monitoring'}
             </p>
             {cameraState === 'idle' && (
-              <button onClick={startCamera} className="px-6 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-sm font-medium">
-                Allow Camera
-              </button>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (autoStart) localStorage.setItem('gestureflow_camera_autostart', 'true');
+                    startCamera();
+                  }}
+                  className="px-6 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-sm font-medium"
+                >
+                  Allow Camera
+                </button>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoStart}
+                    onChange={e => setAutoStart(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-cyan-400"
+                  />
+                  <span className="text-xs text-slate-500">Always start automatically</span>
+                </label>
+              </div>
             )}
           </div>
         )}

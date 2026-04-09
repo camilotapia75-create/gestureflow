@@ -282,6 +282,7 @@ export default function SmileQuota() {
   const [settings,     setSettings]     = useState<SmileSettings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
   const [cameraState,  setCameraState]  = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
+  const [autoStart,    setAutoStart]    = useState(false);
   const [smileCount,   setSmileCount]   = useState(0);
   const [superCount,   setSuperCount]   = useState(0);
   const [session1Done, setSession1Done] = useState(false);
@@ -462,6 +463,14 @@ export default function SmileQuota() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
+  }, []);
+
+  // Auto-start camera if user previously opted in
+  useEffect(() => {
+    if (localStorage.getItem('gestureflow_camera_autostart') === 'true') {
+      requestCamera();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isBaseComplete = smileCount >= QUOTA;
@@ -804,7 +813,10 @@ export default function SmileQuota() {
                 <p className="text-xs text-gray-500">All processing is on-device — nothing is uploaded</p>
               </div>
               <button
-                onClick={requestCamera}
+                onClick={() => {
+                  if (autoStart) localStorage.setItem('gestureflow_camera_autostart', 'true');
+                  requestCamera();
+                }}
                 className="px-6 py-3 rounded-2xl font-bold text-sm text-[#050510] btn-press"
                 style={{
                   background: 'linear-gradient(135deg, #00f0ff, #7b2fff)',
@@ -813,6 +825,15 @@ export default function SmileQuota() {
               >
                 Allow Camera
               </button>
+              <label className="flex items-center gap-2 cursor-pointer select-none mt-1">
+                <input
+                  type="checkbox"
+                  checked={autoStart}
+                  onChange={e => setAutoStart(e.target.checked)}
+                  className="w-3.5 h-3.5 accent-cyan-400"
+                />
+                <span className="text-xs text-gray-500">Always start automatically</span>
+              </label>
             </div>
           )}
 
@@ -832,6 +853,14 @@ export default function SmileQuota() {
               <p className="text-xs text-gray-500 text-center">
                 Allow camera access in your browser settings and reload
               </p>
+              {localStorage.getItem('gestureflow_camera_autostart') === 'true' && (
+                <button
+                  onClick={() => localStorage.removeItem('gestureflow_camera_autostart')}
+                  className="text-xs text-gray-600 underline mt-1"
+                >
+                  Turn off auto-start
+                </button>
+              )}
             </div>
           )}
 
