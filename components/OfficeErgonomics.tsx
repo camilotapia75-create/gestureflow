@@ -95,29 +95,60 @@ const SFX_URLS: Record<string, string> = {
 };
 
 function playSfxFallback(id: string) {
-  // Web Audio synthesis as fallback when network unavailable
   const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   if (!AC) return;
   const ctx = new AC();
   const now = ctx.currentTime;
-  const gain = (v: number) => { const g = ctx.createGain(); g.gain.value = v; return g; };
 
   if (id === 'sfx-cat') {
-    const o = ctx.createOscillator(); const g = gain(0.3);
+    const o = ctx.createOscillator(); const g = ctx.createGain();
     o.frequency.setValueAtTime(650, now); o.frequency.linearRampToValueAtTime(1050, now + 0.12); o.frequency.linearRampToValueAtTime(780, now + 0.38);
     g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.3, now + 0.05); g.gain.linearRampToValueAtTime(0, now + 0.5);
     o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.5);
   } else if (id === 'sfx-dog') {
     [0, 0.22].forEach(t => {
-      const o = ctx.createOscillator(); o.type = 'sawtooth'; const g = gain(0.4);
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; const g = ctx.createGain();
       o.frequency.setValueAtTime(160, now + t); o.frequency.linearRampToValueAtTime(110, now + t + 0.15);
-      g.gain.exponentialRampToValueAtTime(0.01, now + t + 0.18);
+      g.gain.setValueAtTime(0.4, now + t); g.gain.exponentialRampToValueAtTime(0.01, now + t + 0.18);
       o.connect(g); g.connect(ctx.destination); o.start(now + t); o.stop(now + t + 0.2);
     });
+  } else if (id === 'sfx-duck') {
+    // Two nasal quacks: fast rise then drop in pitch
+    [0, 0.32].forEach(t => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1200; f.Q.value = 2;
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(700, now + t); o.frequency.linearRampToValueAtTime(1100, now + t + 0.06); o.frequency.linearRampToValueAtTime(450, now + t + 0.22);
+      g.gain.setValueAtTime(0, now + t); g.gain.linearRampToValueAtTime(0.5, now + t + 0.02); g.gain.linearRampToValueAtTime(0, now + t + 0.25);
+      o.connect(f); f.connect(g); g.connect(ctx.destination); o.start(now + t); o.stop(now + t + 0.28);
+    });
+  } else if (id === 'sfx-cow') {
+    // Deep resonant moo: low fundamental, slow pitch arc, formant filter
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 350; f.Q.value = 4;
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(75, now); o.frequency.linearRampToValueAtTime(120, now + 0.35); o.frequency.linearRampToValueAtTime(80, now + 1.1);
+    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.5, now + 0.1); g.gain.setValueAtTime(0.45, now + 0.9); g.gain.linearRampToValueAtTime(0, now + 1.3);
+    o.connect(f); f.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 1.35);
+  } else if (id === 'sfx-fart') {
+    // Brownian noise burst + bandpass + amplitude flutter
+    const len = Math.floor(ctx.sampleRate * 1.2);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      last = (last + 0.05 * (Math.random() * 2 - 1)) / 1.05;
+      const t = i / ctx.sampleRate;
+      const env = t < 0.04 ? t / 0.04 : Math.exp(-(t - 0.04) * 2.5);
+      const flutter = 1 + 0.4 * Math.sin(2 * Math.PI * 18 * t);
+      data[i] = last * 10 * env * flutter;
+    }
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 400; f.Q.value = 1.2;
+    src.connect(f); f.connect(ctx.destination); src.start(now);
   } else {
-    // generic beep fallback
-    const o = ctx.createOscillator(); const g = gain(0.2);
-    o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.2);
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    g.gain.value = 0.2; o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.2);
   }
 }
 
