@@ -10,7 +10,6 @@
  *   - Dog:  Barking_of_a_dog.ogg (2.6 s) → a/a2
  *   - Duck: Anas_platyrhynchos_-_Mallard_-_XC62258.ogg (3.5 s) → f/fa  ✓ confirmed
  *   - Cow:  Mudchute_cow_1.ogg (2.2 s) → 4/48
- *   - Fart: Human_Flatulence.ogg → e/eb
  */
 
 import https from 'https';
@@ -60,15 +59,6 @@ const SOUNDS = [
       'https://upload.wikimedia.org/wikipedia/commons/4/48/Mudchute_cow_1.ogg',
       'https://commons.wikimedia.org/wiki/Special:FilePath/Mudchute_cow_1.ogg',
       'https://upload.wikimedia.org/wikipedia/commons/2/25/Moo.ogg',
-    ],
-  },
-  {
-    name: 'fart.ogg',
-    urls: [
-      'https://upload.wikimedia.org/wikipedia/commons/e/eb/Human_Flatulence.ogg',
-      'https://commons.wikimedia.org/wiki/Special:FilePath/Human_Flatulence.ogg',
-      'https://archive.org/download/fart-sound-effect/fart-sound-effect.mp3',
-      'https://archive.org/download/dramatic-fart-sound-effect/dramatic-fart-sound-effect.mp3',
     ],
   },
 ];

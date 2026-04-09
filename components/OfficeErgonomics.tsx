@@ -18,24 +18,17 @@ const VOICE_STORAGE_KEY   = 'gestureflow_office_voice';
 // ── Voice profiles ────────────────────────────────────────────────────────────
 // We match by BCP-47 lang tag + name heuristics from the browser voice list.
 const VOICE_PROFILES = [
-  { id: 'us-f',  label: 'Emma — US Female',         lang: 'en-US', pitch: 1.15, rate: 0.9,  prefer: /samantha|zira|google us eng.*fem|ava|emma/i },
-  { id: 'us-m',  label: 'James — US Male',           lang: 'en-US', pitch: 0.85, rate: 0.88, prefer: /david|mark|alex|google us eng.*mal|james/i },
   { id: 'gb-f',  label: 'Sophie — British Female',   lang: 'en-GB', pitch: 1.1,  rate: 0.88, prefer: /hazel|kate|serena|google uk.*fem|emily/i },
   { id: 'gb-m',  label: 'Oliver — British Male',     lang: 'en-GB', pitch: 0.88, rate: 0.85, prefer: /daniel|george|google uk.*mal|oliver/i },
   { id: 'au-f',  label: 'Charlotte — Australian',    lang: 'en-AU', pitch: 1.1,  rate: 0.9,  prefer: /karen|lee|catherine|google aus.*fem/i },
   { id: 'au-m',  label: 'Jack — Australian Male',    lang: 'en-AU', pitch: 0.88, rate: 0.88, prefer: /gordon|google aus.*mal/i },
   { id: 'in-f',  label: 'Priya — Indian Female',     lang: 'en-IN', pitch: 1.1,  rate: 0.88, prefer: /heera|priya|google ind.*fem/i },
-  { id: 'in-m',  label: 'Rajan — Indian Male',       lang: 'en-IN', pitch: 0.88, rate: 0.88, prefer: /rajan|google ind.*mal/i },
-  { id: 'us-f2', label: 'Aria — US Soft Female',     lang: 'en-US', pitch: 1.25, rate: 0.82, prefer: /aria|victoria|allison|susan/i },
-  { id: 'us-m2', label: 'Coach — US Deep Male',      lang: 'en-US', pitch: 0.72, rate: 0.82, prefer: /fred|tom|bruce|ralph/i },
-  { id: 'ie-f',  label: 'Niamh — Irish Female',      lang: 'en-IE', pitch: 1.1,  rate: 0.88, prefer: /moira|fiona|google ire/i },
   { id: 'za-f',  label: 'Lerato — S. African Female',lang: 'en-ZA', pitch: 1.08, rate: 0.88, prefer: /google south|tessa/i },
   // ── Sound effects ──
   { id: 'sfx-cat',  label: '🐱 Cat — Meow',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
   { id: 'sfx-dog',  label: '🐶 Dog — Woof',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
   { id: 'sfx-duck', label: '🦆 Duck — Quack', lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
   { id: 'sfx-cow',  label: '🐄 Cow — Moo',    lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
-  { id: 'sfx-fart', label: '💨 Fart',          lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
 ] as const;
 type VoiceId = typeof VOICE_PROFILES[number]['id'];
 
@@ -91,7 +84,6 @@ const SFX_URLS: Record<string, string> = {
   'sfx-dog':  '/sounds/dog.ogg',
   'sfx-duck': '/sounds/duck.ogg',
   'sfx-cow':  '/sounds/cow.ogg',
-  'sfx-fart': '/sounds/fart.ogg',
 };
 
 function playSfxFallback(id: string) {
@@ -130,22 +122,6 @@ function playSfxFallback(id: string) {
     o.frequency.setValueAtTime(75, now); o.frequency.linearRampToValueAtTime(120, now + 0.35); o.frequency.linearRampToValueAtTime(80, now + 1.1);
     g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.5, now + 0.1); g.gain.setValueAtTime(0.45, now + 0.9); g.gain.linearRampToValueAtTime(0, now + 1.3);
     o.connect(f); f.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 1.35);
-  } else if (id === 'sfx-fart') {
-    // Brownian noise burst + bandpass + amplitude flutter
-    const len = Math.floor(ctx.sampleRate * 1.2);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    let last = 0;
-    for (let i = 0; i < len; i++) {
-      last = (last + 0.05 * (Math.random() * 2 - 1)) / 1.05;
-      const t = i / ctx.sampleRate;
-      const env = t < 0.04 ? t / 0.04 : Math.exp(-(t - 0.04) * 2.5);
-      const flutter = 1 + 0.4 * Math.sin(2 * Math.PI * 18 * t);
-      data[i] = last * 10 * env * flutter;
-    }
-    const src = ctx.createBufferSource(); src.buffer = buf;
-    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 400; f.Q.value = 1.2;
-    src.connect(f); f.connect(ctx.destination); src.start(now);
   } else {
     const o = ctx.createOscillator(); const g = ctx.createGain();
     g.gain.value = 0.2; o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.2);
