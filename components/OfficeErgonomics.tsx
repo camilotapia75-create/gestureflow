@@ -18,12 +18,12 @@ const VOICE_STORAGE_KEY   = 'gestureflow_office_voice';
 // ── Voice profiles ────────────────────────────────────────────────────────────
 // We match by BCP-47 lang tag + name heuristics from the browser voice list.
 const VOICE_PROFILES = [
-  { id: 'gb-f',  label: 'Sophie — British Female',   lang: 'en-GB', pitch: 1.1,  rate: 0.88, prefer: /hazel|kate|serena|google uk.*fem|emily/i },
-  { id: 'gb-m',  label: 'Oliver — British Male',     lang: 'en-GB', pitch: 0.88, rate: 0.85, prefer: /daniel|george|google uk.*mal|oliver/i },
-  { id: 'au-f',  label: 'Charlotte — Australian',    lang: 'en-AU', pitch: 1.1,  rate: 0.9,  prefer: /karen|lee|catherine|google aus.*fem/i },
-  { id: 'au-m',  label: 'Jack — Australian Male',    lang: 'en-AU', pitch: 0.88, rate: 0.88, prefer: /gordon|google aus.*mal/i },
-  { id: 'in-f',  label: 'Priya — Indian Female',     lang: 'en-IN', pitch: 1.1,  rate: 0.88, prefer: /heera|priya|google ind.*fem/i },
-  { id: 'za-f',  label: 'Lerato — S. African Female',lang: 'en-ZA', pitch: 1.08, rate: 0.88, prefer: /google south|tessa/i },
+  { id: 'gb-f',  label: 'Sophie',    lang: 'en-GB', pitch: 1.1,  rate: 0.88, prefer: /hazel|kate|serena|google uk.*fem|emily/i },
+  { id: 'gb-m',  label: 'Oliver',    lang: 'en-GB', pitch: 0.88, rate: 0.85, prefer: /daniel|george|google uk.*mal|oliver/i },
+  { id: 'au-f',  label: 'Charlotte', lang: 'en-AU', pitch: 1.1,  rate: 0.9,  prefer: /karen|lee|catherine|google aus.*fem/i },
+  { id: 'au-m',  label: 'Jack',      lang: 'en-AU', pitch: 0.88, rate: 0.88, prefer: /gordon|google aus.*mal/i },
+  { id: 'in-f',  label: 'Priya',     lang: 'en-IN', pitch: 1.1,  rate: 0.88, prefer: /heera|priya|google ind.*fem/i },
+  { id: 'za-f',  label: 'Lerato',    lang: 'en-ZA', pitch: 1.08, rate: 0.88, prefer: /google south|tessa/i },
   // ── Sound effects ──
   { id: 'sfx-cat',  label: '🐱 Cat — Meow',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
   { id: 'sfx-dog',  label: '🐶 Dog — Woof',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
