@@ -21,7 +21,7 @@ const VOICE_PROFILES = [
   { id: 'gb-f',  label: 'Sophie',    lang: 'en-GB', pitch: 1.1,  rate: 0.88, prefer: /hazel|kate|serena|google uk.*fem|emily/i },
   { id: 'gb-m',  label: 'Oliver',    lang: 'en-GB', pitch: 0.88, rate: 0.85, prefer: /daniel|george|google uk.*mal|oliver/i },
   { id: 'au-f',  label: 'Charlotte', lang: 'en-AU', pitch: 1.1,  rate: 0.9,  prefer: /karen|lee|catherine|google aus.*fem/i },
-  { id: 'au-m',  label: 'Jack',      lang: 'en-AU', pitch: 0.88, rate: 0.88, prefer: /gordon|google aus.*mal/i },
+  { id: 'au-m',  label: 'Jess',      lang: 'en-AU', pitch: 0.88, rate: 0.88, prefer: /gordon|google aus.*mal/i },
   { id: 'in-f',  label: 'Priya',     lang: 'en-IN', pitch: 1.1,  rate: 0.88, prefer: /heera|priya|google ind.*fem/i },
   { id: 'za-f',  label: 'Lerato',    lang: 'en-ZA', pitch: 1.08, rate: 0.88, prefer: /google south|tessa/i },
   // ── Sound effects ──
