@@ -630,6 +630,126 @@ export default function SmileQuota() {
           </p>
         </motion.div>
 
+        {/* ── Counter section ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
+          className="flex flex-col items-center mb-6"
+        >
+          {/* Big animated number */}
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={superActive ? `s${superCount}` : smileCount}
+              initial={{ scale: 1.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.6, opacity: 0 }}
+              transition={{ type: 'spring', damping: 14, stiffness: 260 }}
+              className="text-9xl font-black leading-none tabular-nums"
+              style={{
+                color: superActive ? '#ffaa00' : isBaseComplete ? '#ff00cc' : '#00f0ff',
+                textShadow: superActive
+                  ? '0 0 40px #ffaa0099, 0 0 80px #ffaa0033'
+                  : isBaseComplete
+                  ? '0 0 40px #ff00cc99, 0 0 80px #ff00cc33'
+                  : '0 0 40px #00f0ff99, 0 0 80px #00f0ff33',
+              }}
+            >
+              {superActive ? superCount : smileCount}
+            </motion.span>
+          </AnimatePresence>
+
+          <div className="flex items-center gap-1.5 mt-1 mb-5">
+            <span className="text-sm text-gray-500">of</span>
+            <span className="text-sm font-bold text-white">{superActive ? SUPER_QUOTA : QUOTA}</span>
+            <span className="text-sm text-gray-500">
+              {superActive ? 'bonus smiles' : 'smiles today'}
+            </span>
+          </div>
+
+          {/* Progress dots — 2×5 shows two labelled rows */}
+          {!superActive && settings.sessionMode === '2x5' ? (
+            <div className="flex flex-col items-center gap-2">
+              {/* Session 1 row */}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-gray-600 w-16 text-right">Session 1</span>
+                <div className="flex gap-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <motion.div
+                      key={i}
+                      initial={false}
+                      animate={{ scale: i < smileCount ? 1 : 0.7, opacity: i < smileCount ? 1 : 0.22 }}
+                      transition={{ type: 'spring', damping: 12, stiffness: 320 }}
+                      className="w-4 h-4 rounded-full"
+                      style={{
+                        background: i < smileCount ? '#00f0ff' : 'rgba(255,255,255,0.15)',
+                        boxShadow: i < smileCount ? '0 0 10px #00f0ff99' : 'none',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              {/* Session 2 row */}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-gray-600 w-16 text-right">Session 2</span>
+                <div className="flex gap-2">
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const filled = Math.max(0, smileCount - 5);
+                    return (
+                      <motion.div
+                        key={i}
+                        initial={false}
+                        animate={{ scale: i < filled ? 1 : 0.7, opacity: i < filled ? 1 : 0.22 }}
+                        transition={{ type: 'spring', damping: 12, stiffness: 320 }}
+                        className="w-4 h-4 rounded-full"
+                        style={{
+                          background: i < filled ? '#ff00cc' : 'rgba(255,255,255,0.15)',
+                          boxShadow: i < filled ? '0 0 10px #ff00cc99' : 'none',
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Standard single-row dots */
+            <div className="flex gap-2.5">
+              {Array.from({ length: superActive ? SUPER_QUOTA : QUOTA }).map((_, i) => {
+                const filled = superActive ? superCount : smileCount;
+                const color  = superActive ? '#ffaa00' : isBaseComplete ? '#ff00cc' : '#00f0ff';
+                return (
+                  <motion.div
+                    key={i}
+                    initial={false}
+                    animate={{ scale: i < filled ? 1 : 0.7, opacity: i < filled ? 1 : 0.22 }}
+                    transition={{ type: 'spring', damping: 12, stiffness: 320 }}
+                    className="w-4 h-4 rounded-full"
+                    style={{
+                      background: i < filled ? color : 'rgba(255,255,255,0.15)',
+                      boxShadow: i < filled ? `0 0 10px ${color}99` : 'none',
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* Dynamic status message */}
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={`${superActive}-${superActive ? superCount : smileCount}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className="mt-4 text-sm font-semibold text-gray-400"
+            >
+              {statusMsg(smileCount, settings.sessionMode, superActive, superCount)}
+            </motion.p>
+          </AnimatePresence>
+        </motion.div>
+
         {/* ── Camera view ── */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -794,126 +914,6 @@ export default function SmileQuota() {
                 🏆 Super Smile Day Complete!
               </motion.div>
             )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* ── Counter section ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.18 }}
-          className="flex flex-col items-center mb-6"
-        >
-          {/* Big animated number */}
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={superActive ? `s${superCount}` : smileCount}
-              initial={{ scale: 1.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.6, opacity: 0 }}
-              transition={{ type: 'spring', damping: 14, stiffness: 260 }}
-              className="text-9xl font-black leading-none tabular-nums"
-              style={{
-                color: superActive ? '#ffaa00' : isBaseComplete ? '#ff00cc' : '#00f0ff',
-                textShadow: superActive
-                  ? '0 0 40px #ffaa0099, 0 0 80px #ffaa0033'
-                  : isBaseComplete
-                  ? '0 0 40px #ff00cc99, 0 0 80px #ff00cc33'
-                  : '0 0 40px #00f0ff99, 0 0 80px #00f0ff33',
-              }}
-            >
-              {superActive ? superCount : smileCount}
-            </motion.span>
-          </AnimatePresence>
-
-          <div className="flex items-center gap-1.5 mt-1 mb-5">
-            <span className="text-sm text-gray-500">of</span>
-            <span className="text-sm font-bold text-white">{superActive ? SUPER_QUOTA : QUOTA}</span>
-            <span className="text-sm text-gray-500">
-              {superActive ? 'bonus smiles' : 'smiles today'}
-            </span>
-          </div>
-
-          {/* Progress dots — 2×5 shows two labelled rows */}
-          {!superActive && settings.sessionMode === '2x5' ? (
-            <div className="flex flex-col items-center gap-2">
-              {/* Session 1 row */}
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-gray-600 w-16 text-right">Session 1</span>
-                <div className="flex gap-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <motion.div
-                      key={i}
-                      initial={false}
-                      animate={{ scale: i < smileCount ? 1 : 0.7, opacity: i < smileCount ? 1 : 0.22 }}
-                      transition={{ type: 'spring', damping: 12, stiffness: 320 }}
-                      className="w-4 h-4 rounded-full"
-                      style={{
-                        background: i < smileCount ? '#00f0ff' : 'rgba(255,255,255,0.15)',
-                        boxShadow: i < smileCount ? '0 0 10px #00f0ff99' : 'none',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-              {/* Session 2 row */}
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-gray-600 w-16 text-right">Session 2</span>
-                <div className="flex gap-2">
-                  {Array.from({ length: 5 }).map((_, i) => {
-                    const filled = Math.max(0, smileCount - 5);
-                    return (
-                      <motion.div
-                        key={i}
-                        initial={false}
-                        animate={{ scale: i < filled ? 1 : 0.7, opacity: i < filled ? 1 : 0.22 }}
-                        transition={{ type: 'spring', damping: 12, stiffness: 320 }}
-                        className="w-4 h-4 rounded-full"
-                        style={{
-                          background: i < filled ? '#ff00cc' : 'rgba(255,255,255,0.15)',
-                          boxShadow: i < filled ? '0 0 10px #ff00cc99' : 'none',
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Standard single-row dots */
-            <div className="flex gap-2.5">
-              {Array.from({ length: superActive ? SUPER_QUOTA : QUOTA }).map((_, i) => {
-                const filled = superActive ? superCount : smileCount;
-                const color  = superActive ? '#ffaa00' : isBaseComplete ? '#ff00cc' : '#00f0ff';
-                return (
-                  <motion.div
-                    key={i}
-                    initial={false}
-                    animate={{ scale: i < filled ? 1 : 0.7, opacity: i < filled ? 1 : 0.22 }}
-                    transition={{ type: 'spring', damping: 12, stiffness: 320 }}
-                    className="w-4 h-4 rounded-full"
-                    style={{
-                      background: i < filled ? color : 'rgba(255,255,255,0.15)',
-                      boxShadow: i < filled ? `0 0 10px ${color}99` : 'none',
-                    }}
-                  />
-                );
-              })}
-            </div>
-          )}
-
-          {/* Dynamic status message */}
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={`${superActive}-${superActive ? superCount : smileCount}`}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25 }}
-              className="mt-4 text-sm font-semibold text-gray-400"
-            >
-              {statusMsg(smileCount, settings.sessionMode, superActive, superCount)}
-            </motion.p>
           </AnimatePresence>
         </motion.div>
 
