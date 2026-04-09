@@ -285,6 +285,7 @@ export default function PracticeScreen() {
 
   const [perm, setPerm] = useState<PermState>('unknown');
   const [permError, setPermError] = useState<string | null>(null);
+  const [autoStart, setAutoStart] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [sessionEnded, setSessionEnded] = useState<{
     duration: number;
@@ -432,6 +433,14 @@ export default function PracticeScreen() {
       })
       .catch(() => {/* permissions API not available */});
   }, [startCamera]);
+
+  // Auto-start if user opted in
+  useEffect(() => {
+    if (localStorage.getItem('gestureflow_camera_autostart') === 'true') {
+      startCamera();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Inference loop ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -746,11 +755,29 @@ export default function PracticeScreen() {
     );
   }
 
+  // ── Render: Camera being requested (autostart) — show spinner, not full screen
+  if (perm === 'requesting') {
+    return (
+      <div className="fixed inset-0 bg-[#050510] flex flex-col items-center justify-center gap-4">
+        <div
+          className="w-10 h-10 rounded-full border-2 animate-spin"
+          style={{ borderColor: '#00f0ff', borderTopColor: 'transparent' }}
+        />
+        <p className="text-sm text-gray-400">Starting camera…</p>
+      </div>
+    );
+  }
+
   // ── Render: Need camera permission ────────────────────────────────────
-  if (perm === 'unknown' || perm === 'denied' || perm === 'requesting') {
+  if (perm === 'unknown' || perm === 'denied') {
     return (
       <CameraPermission
-        onRequest={startCamera}
+        onRequest={() => {
+          if (autoStart) localStorage.setItem('gestureflow_camera_autostart', 'true');
+          startCamera();
+        }}
+        autoStart={autoStart}
+        onAutoStartChange={setAutoStart}
         error={permError}
       />
     );

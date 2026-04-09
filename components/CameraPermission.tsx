@@ -6,9 +6,11 @@ import { Camera, Shield, Zap } from 'lucide-react';
 interface Props {
   onRequest: () => void;
   error?: string | null;
+  autoStart?: boolean;
+  onAutoStartChange?: (v: boolean) => void;
 }
 
-export default function CameraPermission({ onRequest, error }: Props) {
+export default function CameraPermission({ onRequest, error, autoStart, onAutoStartChange }: Props) {
   return (
     <div className="fixed inset-0 bg-[#050510] flex flex-col items-center justify-center z-40 p-6">
       {/* Background glow */}
@@ -109,7 +111,19 @@ export default function CameraPermission({ onRequest, error }: Props) {
           Allow Camera
         </motion.button>
 
-        <p className="mt-4 text-xs text-gray-600">
+        {onAutoStartChange && (
+          <label className="flex items-center gap-2 cursor-pointer select-none mt-3">
+            <input
+              type="checkbox"
+              checked={autoStart ?? false}
+              onChange={e => onAutoStartChange(e.target.checked)}
+              className="w-3.5 h-3.5 accent-cyan-400"
+            />
+            <span className="text-xs text-gray-500">Always start automatically</span>
+          </label>
+        )}
+
+        <p className="mt-3 text-xs text-gray-600">
           You can revoke access anytime in your browser settings
         </p>
       </motion.div>
