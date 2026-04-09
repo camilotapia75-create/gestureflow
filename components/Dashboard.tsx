@@ -308,7 +308,21 @@ export default function Dashboard() {
           >
             <span className="text-2xl">💡</span>
             <p className="text-sm text-gray-300 leading-snug">
-              <strong className="text-white">Pro tip:</strong> Open gestures with palms facing out build 40% more audience trust.
+              <strong className="text-white">Pro tip: </strong>
+              {[
+                'Open gestures with palms facing out build 40% more audience trust.',
+                'Speakers who pause for 2–3 seconds before key points are rated as more confident and credible by listeners.',
+                'Standing with feet shoulder-width apart lowers cortisol and raises testosterone — your body changes how you feel before you speak.',
+                'Eye contact held for 3–5 seconds per person makes audiences feel personally addressed; less feels evasive, more feels aggressive.',
+                'Mirroring your audience\'s posture within the first 60 seconds increases perceived rapport by up to 30%.',
+                'Gesturing above the waist is associated with enthusiasm and energy; below the waist reads as uncertainty to observers.',
+                'Research shows speakers who vary their vocal pitch are rated 38% more interesting than those who speak in a monotone.',
+                'The "steeple" hand gesture (fingertips touching, forming a tent) is consistently linked to authority and high confidence in studies.',
+                'People decide whether they like a speaker within the first 7 seconds — posture and facial expression drive that snap judgment.',
+                'Nodding slowly (once per second) signals agreement and encourages audiences to keep listening. Fast nodding signals impatience.',
+                'Pointing with an open hand (all fingers together) is perceived as less aggressive than a single pointed finger.',
+                'Smiling before speaking — even briefly — activates the audience\'s mirror neurons, making them more receptive from the first word.',
+              ][Math.floor(Date.now() / 86400000) % 12]}
             </p>
           </div>
 
