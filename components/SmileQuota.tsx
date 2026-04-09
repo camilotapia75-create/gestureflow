@@ -600,6 +600,36 @@ export default function SmileQuota() {
           )}
         </AnimatePresence>
 
+        {/* ── Science quote card ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.28 }}
+          className="rounded-3xl p-5 mb-6"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,0,204,0.07), rgba(123,47,255,0.1))',
+            border: '1px solid rgba(255,0,204,0.14)',
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-base">🧠</span>
+            <span
+              className="text-[11px] font-black tracking-widest uppercase"
+              style={{ color: '#ff00cc' }}
+            >
+              Did You Know?
+            </span>
+          </div>
+          <p className="text-sm text-gray-300 leading-relaxed">
+            <strong className="text-white">Even a fake smile makes you happier.</strong>{' '}
+            When you smile — real or forced — your face muscles signal your brain to release{' '}
+            <span style={{ color: '#00f0ff', fontWeight: 700 }}>serotonin</span> and{' '}
+            <span style={{ color: '#ff00cc', fontWeight: 700 }}>dopamine</span>, the exact same
+            chemicals as genuine joy. Your brain literally cannot tell the difference.{' '}
+            <strong className="text-white">Fake it till you feel it. Science says so.</strong>
+          </p>
+        </motion.div>
+
         {/* ── Camera view ── */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -933,36 +963,6 @@ export default function SmileQuota() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* ── Science quote card ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.28 }}
-          className="rounded-3xl p-5"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,0,204,0.07), rgba(123,47,255,0.1))',
-            border: '1px solid rgba(255,0,204,0.14)',
-          }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-base">🧠</span>
-            <span
-              className="text-[11px] font-black tracking-widest uppercase"
-              style={{ color: '#ff00cc' }}
-            >
-              Did You Know?
-            </span>
-          </div>
-          <p className="text-sm text-gray-300 leading-relaxed">
-            <strong className="text-white">Even a fake smile makes you happier.</strong>{' '}
-            When you smile — real or forced — your face muscles signal your brain to release{' '}
-            <span style={{ color: '#00f0ff', fontWeight: 700 }}>serotonin</span> and{' '}
-            <span style={{ color: '#ff00cc', fontWeight: 700 }}>dopamine</span>, the exact same
-            chemicals as genuine joy. Your brain literally cannot tell the difference.{' '}
-            <strong className="text-white">Fake it till you feel it. Science says so.</strong>
-          </p>
-        </motion.div>
 
         <div className="flex-1" />
       </div>
