@@ -9,11 +9,11 @@ import {
   Mic, Monitor, Smile, ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
+
 import { loadStats, formatTime, StoredStats } from '@/lib/storage';
 import { loadSessionsFromDb, type DbSession } from '@/lib/db';
 import { useUser } from '@/hooks/useUser';
 import { createClient } from '@/lib/supabase';
-import BottomNav from './BottomNav';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -227,7 +227,7 @@ export default function Dashboard() {
 
   return (
     <div className="page-scroll cyber-bg scanline">
-      <div className="min-h-full px-5 pt-safe pb-28 flex flex-col">
+      <div className="min-h-full px-5 pt-safe pb-10 flex flex-col">
 
         {/* ── Top bar ── */}
         <motion.div
@@ -240,6 +240,21 @@ export default function Dashboard() {
             <span style={{ color: '#00f0ff', textShadow: '0 0 12px #00f0ff55' }}>Gesture</span>Flow
           </h1>
           <div className="flex items-center gap-2">
+            {/* Sync chip — shown left of Local/Sign In when signed out */}
+            {!userLoading && !user && (
+              <button
+                onClick={() => router.push('/auth')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold"
+                style={{
+                  background: 'rgba(0,240,255,0.06)',
+                  border: '1px solid rgba(0,240,255,0.2)',
+                  color: '#00f0ff',
+                }}
+              >
+                <Cloud size={12} />
+                Sync progress
+              </button>
+            )}
             {!userLoading && (
               <div
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold"
@@ -284,31 +299,45 @@ export default function Dashboard() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.08 }}
-          className="text-gray-400 text-sm mb-5"
+          className="text-gray-400 text-sm mb-4"
         >
           {greeting} 👋 What are you working on today?
         </motion.p>
 
-        {/* Cloud sync prompt (signed-out users) */}
-        {!userLoading && !user && (
-          <motion.button
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            onClick={() => router.push('/auth')}
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl mb-4 w-full text-left"
-            style={{
-              background: 'rgba(0,240,255,0.04)',
-              border: '1px solid rgba(0,240,255,0.12)',
-            }}
-          >
-            <Cloud size={18} style={{ color: '#00f0ff', flexShrink: 0 }} />
+        {/* ── Daily pro tip (below title) ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="rounded-2xl p-4 mb-5"
+          style={{
+            background: 'linear-gradient(135deg, rgba(0,240,255,0.06), rgba(255,0,204,0.04))',
+            border: '1px solid rgba(0,240,255,0.12)',
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-xl leading-none mt-0.5">💡</span>
             <div>
-              <p className="text-xs font-bold text-white">Sync progress across devices</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Sign in to save your history to the cloud</p>
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Daily Tip</p>
+              <p className="text-sm text-gray-300 leading-snug">
+                {[
+                  'Open gestures with palms facing out build 40% more audience trust.',
+                  'Speakers who pause for 2–3 seconds before key points are rated as more confident and credible by listeners.',
+                  'Standing with feet shoulder-width apart lowers cortisol and raises testosterone — your body changes how you feel before you speak.',
+                  'Eye contact held for 3–5 seconds per person makes audiences feel personally addressed; less feels evasive, more feels aggressive.',
+                  "Mirroring your audience's posture within the first 60 seconds increases perceived rapport by up to 30%.",
+                  'Gesturing above the waist is associated with enthusiasm and energy; below the waist reads as uncertainty to observers.',
+                  'Research shows speakers who vary their vocal pitch are rated 38% more interesting than those who speak in a monotone.',
+                  'The "steeple" hand gesture (fingertips touching, forming a tent) is consistently linked to authority and high confidence in studies.',
+                  'People decide whether they like a speaker within the first 7 seconds — posture and facial expression drive that snap judgment.',
+                  'Nodding slowly (once per second) signals agreement and encourages audiences to keep listening. Fast nodding signals impatience.',
+                  'Pointing with an open hand (all fingers together) is perceived as less aggressive than a single pointed finger.',
+                  "Smiling before speaking — even briefly — activates the audience's mirror neurons, making them more receptive from the first word.",
+                ][Math.floor(Date.now() / 86400000) % 12]}
+              </p>
             </div>
-            <ChevronRight size={14} className="text-gray-600 ml-auto flex-shrink-0" />
-          </motion.button>
-        )}
+          </div>
+        </motion.div>
 
         {/* ── 3 Tool Cards ── */}
         <div className="flex flex-col gap-3 mb-6">
@@ -320,7 +349,7 @@ export default function Dashboard() {
             statColor={totalGestures > 0 ? '#00f0ff' : '#444466'}
             cta="Start"
             color="#00f0ff"
-            delay={0.12}
+            delay={0.15}
             onClick={() => router.push('/practice')}
           />
           <ToolCard
@@ -331,7 +360,7 @@ export default function Dashboard() {
             statColor="#7b2fff"
             cta="Start"
             color="#7b2fff"
-            delay={0.18}
+            delay={0.2}
             onClick={() => router.push('/office')}
           />
           <ToolCard
@@ -340,9 +369,9 @@ export default function Dashboard() {
             description="Hit 10 smiles a day to boost energy & mood"
             stat={smileStat}
             statColor={smileStatColor}
-            cta="Open"
+            cta="Start"
             color="#ff00cc"
-            delay={0.24}
+            delay={0.25}
             onClick={() => router.push('/smile')}
           />
         </div>
@@ -383,44 +412,7 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* ── Daily pro tip ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="rounded-2xl p-4"
-          style={{
-            background: 'linear-gradient(135deg, rgba(0,240,255,0.06), rgba(255,0,204,0.04))',
-            border: '1px solid rgba(0,240,255,0.12)',
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <span className="text-xl leading-none mt-0.5">💡</span>
-            <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Daily Tip</p>
-              <p className="text-sm text-gray-300 leading-snug">
-                {[
-                  'Open gestures with palms facing out build 40% more audience trust.',
-                  'Speakers who pause for 2–3 seconds before key points are rated as more confident and credible by listeners.',
-                  'Standing with feet shoulder-width apart lowers cortisol and raises testosterone — your body changes how you feel before you speak.',
-                  'Eye contact held for 3–5 seconds per person makes audiences feel personally addressed; less feels evasive, more feels aggressive.',
-                  "Mirroring your audience's posture within the first 60 seconds increases perceived rapport by up to 30%.",
-                  'Gesturing above the waist is associated with enthusiasm and energy; below the waist reads as uncertainty to observers.',
-                  'Research shows speakers who vary their vocal pitch are rated 38% more interesting than those who speak in a monotone.',
-                  'The "steeple" hand gesture (fingertips touching, forming a tent) is consistently linked to authority and high confidence in studies.',
-                  'People decide whether they like a speaker within the first 7 seconds — posture and facial expression drive that snap judgment.',
-                  'Nodding slowly (once per second) signals agreement and encourages audiences to keep listening. Fast nodding signals impatience.',
-                  'Pointing with an open hand (all fingers together) is perceived as less aggressive than a single pointed finger.',
-                  "Smiling before speaking — even briefly — activates the audience's mirror neurons, making them more receptive from the first word.",
-                ][Math.floor(Date.now() / 86400000) % 12]}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
       </div>
-
-      <BottomNav />
     </div>
   );
 }
