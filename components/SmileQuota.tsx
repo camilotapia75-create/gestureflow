@@ -764,9 +764,10 @@ export default function SmileQuota() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1, duration: 0.4 }}
-          className="rounded-3xl overflow-hidden relative mb-6"
+          className="rounded-3xl overflow-hidden relative mb-6 mx-auto"
           style={{
             aspectRatio: '4/3',
+            width: '65%',
             background: 'rgba(10,10,26,0.95)',
             border: isSmiling
               ? '2px solid #00f0ff'
