@@ -912,6 +912,48 @@ export default function SmileQuota() {
             </AnimatePresence>
           )}
 
+          {/* ── In-camera progress overlay ── */}
+          {cameraState === 'granted' && isReady && (
+            <div
+              className="absolute bottom-0 left-0 right-0 px-3 pb-2 pt-6 flex flex-col items-center gap-1.5 pointer-events-none"
+              style={{ background: 'linear-gradient(to top, rgba(5,5,16,0.82) 0%, transparent 100%)' }}
+            >
+              {/* Count */}
+              <div className="flex items-baseline gap-1">
+                <span
+                  className="text-2xl font-black tabular-nums leading-none"
+                  style={{
+                    color: superActive ? '#ffaa00' : isBaseComplete ? '#ff00cc' : '#00f0ff',
+                    textShadow: superActive ? '0 0 12px #ffaa0099' : isBaseComplete ? '0 0 12px #ff00cc99' : '0 0 12px #00f0ff99',
+                  }}
+                >
+                  {superActive ? superCount : smileCount}
+                </span>
+                <span className="text-[11px] text-gray-400 font-medium">
+                  / {superActive ? SUPER_QUOTA : QUOTA}
+                </span>
+              </div>
+              {/* Dots */}
+              <div className="flex gap-1.5">
+                {Array.from({ length: superActive ? SUPER_QUOTA : QUOTA }).map((_, i) => {
+                  const filled = superActive ? superCount : smileCount;
+                  const color  = superActive ? '#ffaa00' : isBaseComplete ? '#ff00cc' : '#00f0ff';
+                  return (
+                    <div
+                      key={i}
+                      className="rounded-full transition-all duration-200"
+                      style={{
+                        width: 7, height: 7,
+                        background: i < filled ? color : 'rgba(255,255,255,0.2)',
+                        boxShadow: i < filled ? `0 0 6px ${color}` : 'none',
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── Completion banners ── */}
           <AnimatePresence>
             {isBaseComplete && !superActive && cameraState === 'granted' && (
