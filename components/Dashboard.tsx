@@ -244,14 +244,14 @@ export default function Dashboard() {
             {!userLoading && !user && (
               <button
                 onClick={() => router.push('/auth')}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold"
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[8px] font-bold"
                 style={{
                   background: 'rgba(0,240,255,0.06)',
                   border: '1px solid rgba(0,240,255,0.2)',
                   color: '#00f0ff',
                 }}
               >
-                <Cloud size={12} />
+                <Cloud size={7} />
                 Sync progress
               </button>
             )}
