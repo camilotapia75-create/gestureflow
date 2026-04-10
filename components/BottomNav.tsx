@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Home, Smile, Monitor } from 'lucide-react';
 
 const TABS = [
-  { label: 'Presentation', icon: Home,    path: '/' },
+  { label: 'Home',         icon: Home,    path: '/' },
   { label: 'Office', icon: Monitor, path: '/office' },
   { label: 'Smile',  icon: Smile,   path: '/smile' },
 ] as const;
