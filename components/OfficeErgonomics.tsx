@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Monitor, Volume2, VolumeX, CheckCircle2, AlertTriangle, ScanLine, ArrowLeft } from 'lucide-react';
+import CameraPermission from './CameraPermission';
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
 import { drawGlowingSkeleton } from '@/lib/gestureAnalysis';
 
-type CameraState = 'idle' | 'granted' | 'denied';
+type CameraState = 'idle' | 'requesting' | 'granted' | 'denied';
 type PostureState = 'good' | 'slouching' | 'unknown';
 
 const SLOUCH_TRIGGER_MS   = 2000;
@@ -166,7 +167,11 @@ export default function OfficeErgonomics() {
   const calibrationRef  = useRef<Calibration | null>(null);
   const isCalRef        = useRef(false);
 
-  const [cameraState,   setCameraState]   = useState<CameraState>('idle');
+  const [cameraState,   setCameraState]   = useState<CameraState>(() =>
+    typeof window !== 'undefined' && localStorage.getItem('gestureflow_camera_autostart') === 'true'
+      ? 'requesting'
+      : 'idle'
+  );
   const [autoStart,     setAutoStart]     = useState(false);
   const [postureState,  setPostureState]  = useState<PostureState>('unknown');
   const [voiceEnabled,  setVoiceEnabled]  = useState(true);
@@ -222,6 +227,7 @@ export default function OfficeErgonomics() {
   }, []);
 
   const startCamera = useCallback(async () => {
+    setCameraState('requesting');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
@@ -352,6 +358,20 @@ export default function OfficeErgonomics() {
   const postureLabel = postureState === 'good' ? 'Good posture' : postureState === 'slouching' ? 'Slouching detected!' : 'Stand by…';
   const timeSinceAlert = lastAlertTime ? Math.round((Date.now() - lastAlertTime) / 1000) : null;
 
+  if (cameraState === 'idle' || cameraState === 'denied') {
+    return (
+      <CameraPermission
+        onRequest={() => {
+          if (autoStart) localStorage.setItem('gestureflow_camera_autostart', 'true');
+          startCamera();
+        }}
+        autoStart={autoStart}
+        onAutoStartChange={setAutoStart}
+        error={cameraState === 'denied' ? 'Camera access denied. Please allow camera in your browser settings.' : null}
+      />
+    );
+  }
+
   return (
     <div className="cyber-bg flex flex-col" style={{ height: '100dvh' }}>
       {/* Header */}
@@ -372,39 +392,12 @@ export default function OfficeErgonomics() {
         <video ref={videoRef} className="camera-feed absolute inset-0 w-full h-full object-cover" playsInline muted />
         <canvas ref={canvasRef} className="camera-feed absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }} />
 
-        {/* Idle / denied */}
-        {cameraState !== 'granted' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
-            <div className="absolute top-4 left-5 right-5 flex flex-col gap-2 pointer-events-none">
-              <div className="skeleton h-1.5 w-3/4 rounded-full opacity-40" />
-              <div className="skeleton h-1.5 w-1/2 rounded-full opacity-25" />
-            </div>
-            <Monitor className="text-cyan-400/50" size={48} />
-            <p className="text-slate-400 text-sm text-center">
-              {cameraState === 'denied' ? 'Camera access denied.' : 'Enable camera to start posture monitoring'}
-            </p>
-            {cameraState === 'idle' && (
-              <div className="flex flex-col items-center gap-2">
-                <button
-                  onClick={() => {
-                    if (autoStart) localStorage.setItem('gestureflow_camera_autostart', 'true');
-                    startCamera();
-                  }}
-                  className="px-6 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-sm font-medium"
-                >
-                  Allow Camera
-                </button>
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={autoStart}
-                    onChange={e => setAutoStart(e.target.checked)}
-                    className="w-3.5 h-3.5 accent-cyan-400"
-                  />
-                  <span className="text-xs text-slate-500">Always start automatically</span>
-                </label>
-              </div>
-            )}
+        {/* Requesting — spinner while camera starts */}
+        {cameraState === 'requesting' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#050510]">
+            <div className="w-10 h-10 rounded-full border-2 animate-spin"
+              style={{ borderColor: '#00f0ff', borderTopColor: 'transparent' }} />
+            <p className="text-sm text-gray-400">Starting camera…</p>
           </div>
         )}
 
