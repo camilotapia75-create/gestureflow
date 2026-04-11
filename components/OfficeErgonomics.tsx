@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Monitor, Volume2, VolumeX, CheckCircle2, AlertTriangle, ScanLine, ArrowLeft } from 'lucide-react';
+import { Monitor, Volume2, VolumeX, CheckCircle2, AlertTriangle, ScanLine, ArrowLeft, ChevronRight } from 'lucide-react';
 import CameraPermission from './CameraPermission';
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
 import { drawGlowingSkeleton } from '@/lib/gestureAnalysis';
@@ -23,8 +23,6 @@ const VOICE_PROFILES = [
   { id: 'gb-m',  label: 'Oliver',    lang: 'en-GB', pitch: 0.88, rate: 0.85, prefer: /daniel|george|google uk.*mal|oliver/i },
   { id: 'au-f',  label: 'Charlotte', lang: 'en-AU', pitch: 1.1,  rate: 0.9,  prefer: /karen|lee|catherine|google aus.*fem/i },
   { id: 'au-m',  label: 'Jess',      lang: 'en-AU', pitch: 0.88, rate: 0.88, prefer: /gordon|google aus.*mal/i },
-  { id: 'in-f',  label: 'Priya',     lang: 'en-IN', pitch: 1.1,  rate: 0.88, prefer: /heera|priya|google ind.*fem/i },
-  { id: 'za-f',  label: 'Lindsey',   lang: 'en-ZA', pitch: 1.08, rate: 0.88, prefer: /google south|tessa/i },
   // ── Sound effects ──
   { id: 'sfx-cat',  label: '🐱 Cat — Meow',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
   { id: 'sfx-dog',  label: '🐶 Dog — Woof',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
@@ -466,8 +464,9 @@ export default function OfficeErgonomics() {
             </div>
           </div>
 
-          {/* Voice picker — horizontal scroll */}
-          <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
+          {/* Voice picker — horizontal scroll with right-fade hint */}
+          <div className="relative">
+            <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
             {VOICE_PROFILES.map(p => (
               <button key={p.id}
                 onClick={() => {
@@ -490,6 +489,14 @@ export default function OfficeErgonomics() {
                 <p className="text-[10px] opacity-60 whitespace-nowrap">{p.label.split(' — ')[1]}</p>
               </button>
             ))}
+            </div>
+            {/* Right-fade scroll hint */}
+            <div
+              className="absolute right-0 top-0 bottom-0.5 w-10 pointer-events-none flex items-center justify-end pr-1"
+              style={{ background: 'linear-gradient(to left, rgba(2,4,18,0.95) 0%, transparent 100%)' }}
+            >
+              <ChevronRight size={14} className="text-slate-400 opacity-70" />
+            </div>
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Camera, Settings, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, Camera, Settings, Bell, BellOff, ChevronDown } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useFaceLandmarker } from '@/hooks/useFaceLandmarker';
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
@@ -279,6 +279,9 @@ export default function SmileQuota() {
   const sessionModeRef  = useRef<SessionMode>('1x10');
 
   // State
+  const scrollRef      = useRef<HTMLDivElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(true);
+
   const [settings,     setSettings]     = useState<SmileSettings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
   const [cameraState,  setCameraState]  = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
@@ -288,6 +291,15 @@ export default function SmileQuota() {
   const [session1Done, setSession1Done] = useState(false);
   const [superActive,  setSuperActive]  = useState(false);
   const [isSmiling,    setIsSmiling]    = useState(false);
+
+  // Hide scroll hint once user scrolls
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => { if (el.scrollTop > 30) setShowScrollHint(false); };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Keep mutable refs in sync with state/settings
   useEffect(() => { superActiveRef.current = superActive; }, [superActive]);
@@ -478,7 +490,7 @@ export default function SmileQuota() {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="page-scroll cyber-bg scanline">
+    <div className="page-scroll cyber-bg scanline relative" ref={scrollRef}>
       <div className="min-h-full px-5 pt-safe pb-28 flex flex-col">
 
         {/* ── Header ── */}
@@ -1040,6 +1052,26 @@ export default function SmileQuota() {
       </div>
 
       <BottomNav />
+
+      {/* Scroll-down hint — disappears after first scroll */}
+      <AnimatePresence>
+        {showScrollHint && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-none z-40"
+          >
+            <p className="text-[10px] text-gray-500 font-medium">scroll for more</p>
+            <motion.div
+              animate={{ y: [0, 5, 0] }}
+              transition={{ duration: 1.3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <ChevronDown size={16} className="text-gray-500" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
