@@ -17,17 +17,16 @@ const CAL_STORAGE_KEY     = 'gestureflow_office_calibration';
 const VOICE_STORAGE_KEY   = 'gestureflow_office_voice';
 
 // ── Voice profiles ────────────────────────────────────────────────────────────
-// We match by BCP-47 lang tag + name heuristics from the browser voice list.
+// mobile:true → shown on phones (<768px). All animal SFX always shown.
 const VOICE_PROFILES = [
-  { id: 'gb-f',  label: 'Sophie',    lang: 'en-GB', pitch: 1.1,  rate: 0.88, prefer: /hazel|kate|serena|google uk.*fem|emily/i },
-  { id: 'gb-m',  label: 'Oliver',    lang: 'en-GB', pitch: 0.88, rate: 0.85, prefer: /daniel|george|google uk.*mal|oliver/i },
-  { id: 'au-f',  label: 'Charlotte', lang: 'en-AU', pitch: 1.1,  rate: 0.9,  prefer: /karen|lee|catherine|google aus.*fem/i },
-  { id: 'au-m',  label: 'Jess',      lang: 'en-AU', pitch: 0.88, rate: 0.88, prefer: /gordon|google aus.*mal/i },
-  // ── Sound effects ──
-  { id: 'sfx-cat',  label: '🐱 Cat — Meow',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
-  { id: 'sfx-dog',  label: '🐶 Dog — Woof',   lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
-  { id: 'sfx-duck', label: '🦆 Duck — Quack', lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
-  { id: 'sfx-cow',  label: '🐄 Cow — Moo',    lang: 'en-US', pitch: 1, rate: 1, prefer: /never_match_x/i },
+  { id: 'gb-f',  label: 'Sophie',    lang: 'en-GB', pitch: 1.1,  rate: 0.88, mobile: false, prefer: /hazel|kate|serena|google uk.*fem|emily/i },
+  { id: 'gb-m',  label: 'Oliver',    lang: 'en-GB', pitch: 0.88, rate: 0.85, mobile: true,  prefer: /daniel|george|google uk.*mal|oliver/i },
+  { id: 'au-f',  label: 'Charlotte', lang: 'en-AU', pitch: 1.1,  rate: 0.9,  mobile: true,  prefer: /karen|lee|catherine|google aus.*fem/i },
+  // ── Sound effects (always available) ──
+  { id: 'sfx-cat',  label: '🐱 Cat — Meow',   lang: 'en-US', pitch: 1, rate: 1, mobile: true, prefer: /never_match_x/i },
+  { id: 'sfx-dog',  label: '🐶 Dog — Woof',   lang: 'en-US', pitch: 1, rate: 1, mobile: true, prefer: /never_match_x/i },
+  { id: 'sfx-duck', label: '🦆 Duck — Quack', lang: 'en-US', pitch: 1, rate: 1, mobile: true, prefer: /never_match_x/i },
+  { id: 'sfx-cow',  label: '🐄 Cow — Moo',    lang: 'en-US', pitch: 1, rate: 1, mobile: true, prefer: /never_match_x/i },
 ] as const;
 type VoiceId = typeof VOICE_PROFILES[number]['id'];
 
@@ -195,9 +194,23 @@ export default function OfficeErgonomics() {
   const [alertCount,    setAlertCount]    = useState(0);
   const [lastAlertTime, setLastAlertTime] = useState<number | null>(null);
   const [calProgress,   setCalProgress]   = useState(0);
+  const [isMobile,      setIsMobile]      = useState(false);
 
   const router = useRouter();
   const { detect, isReady } = usePoseLandmarker();
+
+  // Detect mobile
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+  }, []);
+
+  // Reset to Oliver if Sophie is selected on mobile (Sophie is desktop-only)
+  useEffect(() => {
+    if (isMobile && voiceId === 'gb-f') {
+      setVoiceId('gb-m');
+      voiceIdRef.current = 'gb-m';
+    }
+  }, [isMobile, voiceId]);
 
   // Load persisted calibration + voice
   useEffect(() => {
@@ -485,7 +498,7 @@ export default function OfficeErgonomics() {
           {/* Voice picker — horizontal scroll with right-fade hint */}
           <div className="relative">
             <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
-            {VOICE_PROFILES.map(p => (
+            {VOICE_PROFILES.filter(p => !isMobile || p.mobile).map(p => (
               <button key={p.id}
                 onClick={() => {
                   setVoiceId(p.id);
