@@ -51,46 +51,37 @@ function ToolCard({
       transition={{ delay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="
-        w-full relative overflow-hidden rounded-2xl p-4
-        flex flex-row items-center gap-4 text-left
-        md:flex-col md:items-center md:text-center md:justify-start md:gap-0 md:min-h-[220px] md:p-6
-      "
+      className="w-full relative overflow-hidden rounded-2xl p-3 flex flex-col items-center text-center justify-start gap-0 min-h-[160px]"
       style={{
         background: 'rgba(18,18,40,0.85)',
         border: `1px solid ${color}28`,
         backdropFilter: 'blur(20px)',
       }}
     >
-      {/* Glow — corner on mobile, top-center on desktop */}
+      {/* Glow */}
       <div
-        className="absolute -top-6 -right-6 md:-top-10 md:right-auto md:left-1/2 md:-translate-x-1/2 w-24 h-24 md:w-36 md:h-36 rounded-full opacity-10 md:opacity-20 pointer-events-none"
+        className="absolute -top-8 left-1/2 -translate-x-1/2 w-28 h-28 rounded-full opacity-20 pointer-events-none"
         style={{ background: color, filter: 'blur(22px)' }}
       />
 
       {/* Icon badge */}
       <div
-        className="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center flex-shrink-0 md:mb-5 md:mt-1"
+        className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 mt-1 flex-shrink-0"
         style={{ background: `${color}18`, border: `1px solid ${color}38` }}
       >
-        <Icon size={22} style={{ color, filter: `drop-shadow(0 0 7px ${color}99)` }} />
+        <Icon size={20} style={{ color, filter: `drop-shadow(0 0 7px ${color}99)` }} />
       </div>
 
-      {/* Text content */}
-      <div className="flex-1 min-w-0 md:flex-none md:w-full md:mb-auto">
-        <p className="text-sm font-black text-white leading-tight">{name}</p>
-        {/* description hidden on desktop to keep boxes clean */}
-        <p className="text-xs text-gray-500 mt-0.5 leading-snug md:hidden">{description}</p>
-        <p className="text-xs font-semibold mt-1.5" style={{ color: statColor }}>{stat}</p>
-      </div>
+      {/* Text */}
+      <p className="text-[11px] font-black text-white leading-snug mb-1 w-full">{name}</p>
+      <p className="text-[10px] font-semibold leading-snug mb-auto w-full" style={{ color: statColor }}>{stat}</p>
 
-      {/* CTA — right-side chip on mobile, full-width button on desktop */}
+      {/* CTA button */}
       <div
-        className="flex items-center justify-center gap-1 flex-shrink-0 px-3 py-1.5 md:w-full md:mt-5 md:py-2.5 rounded-xl"
-        style={{ background: `${color}15`, border: `1px solid ${color}32` }}
+        className="w-full mt-3 py-2 rounded-xl flex items-center justify-center"
+        style={{ background: `${color}18`, border: `1px solid ${color}35` }}
       >
-        <span className="text-xs font-bold" style={{ color }}>{cta}</span>
-        <ChevronRight size={12} className="md:hidden" style={{ color }} />
+        <span className="text-[11px] font-black" style={{ color }}>{cta}</span>
       </div>
     </motion.button>
   );
@@ -347,7 +338,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* ── 3 Tool Cards ── */}
-        <div className="flex flex-col md:grid md:grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-3 mb-6">
           <ToolCard
             icon={Mic}
             name="Presentation Coach"
