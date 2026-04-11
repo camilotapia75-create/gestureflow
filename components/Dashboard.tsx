@@ -404,7 +404,7 @@ export default function Dashboard() {
           >
             {/* Stats grid */}
             <div className="grid grid-cols-2 gap-3 mb-6">
-              <StatCard icon={Flame} label="Gestures" value={cloudLoading ? '…' : totalGestures} color="#ff6600" delay={0} />
+              <StatCard icon={Flame} label="Power moves" value={cloudLoading ? '…' : totalGestures} color="#ff6600" delay={0} />
               <StatCard icon={Star} label="Best Impact" value={cloudLoading ? '…' : bestImpact} unit="%" color="#ffaa00" delay={0} />
               <StatCard icon={Clock} label="Total Time" value={cloudLoading ? '…' : formatTime(totalTime)} color="#00f0ff" delay={0} />
               <StatCard icon={Zap} label="Best Streak" value={cloudLoading ? '…' : bestStreak} unit="s" color="#7b2fff" delay={0} />
