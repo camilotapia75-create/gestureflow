@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Monitor, Volume2, VolumeX, CheckCircle2, AlertTriangle, ScanLine, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Monitor, Volume2, VolumeX, CheckCircle2, AlertTriangle, ScanLine, ArrowLeft, ChevronRight, Settings, Bell, BellOff, X } from 'lucide-react';
 import CameraPermission from './CameraPermission';
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
 import { drawGlowingSkeleton } from '@/lib/gestureAnalysis';
@@ -15,6 +16,75 @@ const ALERT_COOLDOWN_MS   = 30_000;
 const CALIBRATION_FRAMES  = 60;   // ~2 s of data
 const CAL_STORAGE_KEY     = 'gestureflow_office_calibration';
 const VOICE_STORAGE_KEY   = 'gestureflow_office_voice';
+const OFFICE_SETTINGS_KEY = 'gestureflow_office_settings';
+const OFFICE_NOTIF_KEY    = 'gestureflow_office_last_notif';
+
+interface OfficeSettings {
+  notificationsEnabled: boolean;
+  reminderTime: string; // "HH:MM"
+}
+const DEFAULT_OFFICE_SETTINGS: OfficeSettings = { notificationsEnabled: false, reminderTime: '09:00' };
+
+function loadOfficeSettings(): OfficeSettings {
+  try {
+    const raw = localStorage.getItem(OFFICE_SETTINGS_KEY);
+    if (!raw) return { ...DEFAULT_OFFICE_SETTINGS };
+    return { ...DEFAULT_OFFICE_SETTINGS, ...JSON.parse(raw) };
+  } catch { return { ...DEFAULT_OFFICE_SETTINGS }; }
+}
+
+// ── Push subscription helpers (shared with SmileQuota) ────────────────────────
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
+
+function urlBase64ToUint8Array(base64: string): ArrayBuffer {
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(b64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out.buffer;
+}
+
+function localToUtcTime(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const d = new Date(); d.setHours(h, m, 0, 0);
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
+async function subscribeToPush(reminderTime: string, source: string): Promise<void> {
+  if (!VAPID_PUBLIC_KEY) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  const reg = await navigator.serviceWorker.register('/sw.js');
+  await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+  await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription: sub.toJSON(), reminderTime: localToUtcTime(reminderTime), source }),
+  });
+}
+
+async function unsubscribeFromPush(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+  if (!reg) return;
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub) return;
+  await fetch('/api/push/subscribe', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: sub.endpoint }),
+  }).catch(() => {});
+  await sub.unsubscribe().catch(() => {});
+}
+
+function getTodayStr() { return new Date().toISOString().slice(0, 10); }
 
 // ── Voice profiles ────────────────────────────────────────────────────────────
 // mobile:true → shown on phones (<768px). All animal SFX always shown.
@@ -189,12 +259,17 @@ export default function OfficeErgonomics() {
   );
   const [autoStart,     setAutoStart]     = useState(false);
   const [postureState,  setPostureState]  = useState<PostureState>('unknown');
-  const [voiceEnabled,  setVoiceEnabled]  = useState(true);
+  const [voiceEnabled,  setVoiceEnabled]  = useState(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('gestureflow_office_mute') !== 'true' : true
+  );
   const [voiceId,       setVoiceId]       = useState<VoiceId>('gb-f');
   const [alertCount,    setAlertCount]    = useState(0);
   const [lastAlertTime, setLastAlertTime] = useState<number | null>(null);
   const [calProgress,   setCalProgress]   = useState(0);
   const [isMobile,      setIsMobile]      = useState(false);
+  const [showSettings,  setShowSettings]  = useState(false);
+  const [officeSettings, setOfficeSettings] = useState<OfficeSettings>(DEFAULT_OFFICE_SETTINGS);
+  const [showReminderBanner, setShowReminderBanner] = useState(false);
 
   const router = useRouter();
   const { detect, isReady } = usePoseLandmarker();
@@ -212,7 +287,7 @@ export default function OfficeErgonomics() {
     }
   }, [isMobile, voiceId]);
 
-  // Load persisted calibration + voice
+  // Load persisted calibration + voice + office settings
   useEffect(() => {
     try {
       const raw = localStorage.getItem(CAL_STORAGE_KEY);
@@ -229,7 +304,32 @@ export default function OfficeErgonomics() {
         voiceIdRef.current = v;
       }
     } catch { /* ignore */ }
+    setOfficeSettings(loadOfficeSettings());
   }, []);
+
+  // In-app reminder check — every 30 s, works on all platforms including iOS
+  useEffect(() => {
+    if (!officeSettings.notificationsEnabled) return;
+    function checkTime() {
+      const now = new Date();
+      const [h, m] = officeSettings.reminderTime.split(':').map(Number);
+      if (now.getHours() !== h || now.getMinutes() !== m) return;
+      const last = localStorage.getItem(OFFICE_NOTIF_KEY);
+      if (last === getTodayStr()) return;
+      localStorage.setItem(OFFICE_NOTIF_KEY, getTodayStr());
+      setShowReminderBanner(true);
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification('Posture Check ⚠️', {
+          body: 'Time to sit up straight! Open Office Ergonomics for a posture check.',
+          icon: '/icons/icon-192.png',
+          tag: 'office-posture',
+        });
+      }
+    }
+    checkTime();
+    const id = setInterval(checkTime, 30_000);
+    return () => clearInterval(id);
+  }, [officeSettings.notificationsEnabled, officeSettings.reminderTime]);
 
   useEffect(() => { voiceEnabledRef.current = voiceEnabled; }, [voiceEnabled]);
   useEffect(() => { voiceIdRef.current = voiceId; }, [voiceId]);
@@ -383,6 +483,43 @@ export default function OfficeErgonomics() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function updateOfficeSettings(patch: Partial<OfficeSettings>) {
+    const next = { ...officeSettings, ...patch };
+    localStorage.setItem(OFFICE_SETTINGS_KEY, JSON.stringify(next));
+    setOfficeSettings(next);
+    if (next.notificationsEnabled && patch.reminderTime) {
+      subscribeToPush(next.reminderTime, 'office').catch(console.warn);
+    }
+  }
+
+  async function toggleOfficeNotifications() {
+    if (officeSettings.notificationsEnabled) {
+      updateOfficeSettings({ notificationsEnabled: false });
+      unsubscribeFromPush().catch(() => {});
+    } else {
+      let granted = false;
+      if (typeof Notification !== 'undefined') {
+        if (Notification.permission === 'granted') {
+          granted = true;
+        } else if (Notification.permission === 'default') {
+          const res = await Notification.requestPermission().catch(() => 'default');
+          granted = res === 'granted';
+        }
+      }
+      updateOfficeSettings({ notificationsEnabled: true });
+      if (granted) {
+        subscribeToPush(officeSettings.reminderTime, 'office').catch(console.warn);
+        setTimeout(() => {
+          new Notification('Office reminders on! ⚠️', {
+            body: `We'll remind you at ${officeSettings.reminderTime} to check your posture.`,
+            icon: '/icons/icon-192.png',
+            tag: 'office-confirm',
+          });
+        }, 600);
+      }
+    }
+  }
+
   const postureColor = postureState === 'good' ? 'text-emerald-400' : postureState === 'slouching' ? 'text-red-400' : 'text-slate-400';
   const postureLabel = postureState === 'good' ? 'Good posture' : postureState === 'slouching' ? 'Slouching detected!' : 'Stand by…';
   const timeSinceAlert = lastAlertTime ? Math.round((Date.now() - lastAlertTime) / 1000) : null;
@@ -403,6 +540,29 @@ export default function OfficeErgonomics() {
 
   return (
     <div className="cyber-bg flex flex-col" style={{ height: '100dvh' }}>
+
+      {/* ── In-app reminder banner ── */}
+      <AnimatePresence>
+        {showReminderBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            className="absolute top-16 left-4 right-4 z-[60] rounded-2xl px-4 py-3 flex items-center gap-3"
+            style={{ background: 'rgba(0,240,255,0.12)', border: '1px solid rgba(0,240,255,0.4)', backdropFilter: 'blur(16px)' }}
+          >
+            <Bell size={18} style={{ color: '#00f0ff', flexShrink: 0 }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white leading-tight">Posture reminder!</p>
+              <p className="text-xs text-gray-400 mt-0.5">Time for your posture check — sit up straight!</p>
+            </div>
+            <button onClick={() => setShowReminderBanner(false)} className="flex-shrink-0 p-1">
+              <X size={15} className="text-gray-400" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="pt-safe px-4 pt-4 pb-2 flex items-center gap-3 shrink-0">
         <button
@@ -413,8 +573,82 @@ export default function OfficeErgonomics() {
           <ArrowLeft size={18} className="text-gray-400" />
         </button>
         <Monitor className="text-cyan-400" size={20} />
-        <h1 className="text-lg font-bold gradient-text">Office Ergonomics</h1>
+        <h1 className="text-lg font-bold gradient-text flex-1">Office Ergonomics</h1>
+        <button
+          onClick={() => setShowSettings(v => !v)}
+          className="w-10 h-10 rounded-xl flex items-center justify-center btn-press"
+          style={{
+            background: showSettings ? 'rgba(0,240,255,0.12)' : 'rgba(18,18,40,0.8)',
+            border: showSettings ? '1px solid rgba(0,240,255,0.3)' : '1px solid rgba(255,255,255,0.07)',
+          }}
+        >
+          <Settings size={17} style={{ color: showSettings ? '#00f0ff' : '#6b7280' }} />
+        </button>
       </div>
+
+      {/* Settings panel (collapses open below header) */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22 }}
+            className="overflow-hidden shrink-0 mx-4"
+          >
+            <div className="rounded-2xl p-4 flex flex-col gap-3 mb-2"
+              style={{ background: 'rgba(10,10,26,0.95)', border: '1px solid rgba(0,240,255,0.12)' }}>
+
+              {/* Reminder toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {officeSettings.notificationsEnabled
+                    ? <Bell size={15} style={{ color: '#00f0ff' }} />
+                    : <BellOff size={15} className="text-gray-500" />}
+                  <span className="text-sm font-semibold text-white">Posture reminders</span>
+                </div>
+                <button
+                  onClick={toggleOfficeNotifications}
+                  className="relative w-11 h-6 rounded-full transition-colors duration-200 btn-press"
+                  style={{
+                    background: officeSettings.notificationsEnabled
+                      ? 'linear-gradient(135deg, #00f0ff, #7b2fff)'
+                      : 'rgba(255,255,255,0.1)',
+                  }}
+                >
+                  <span
+                    className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200"
+                    style={{ left: officeSettings.notificationsEnabled ? 'calc(100% - 1.375rem)' : '0.125rem' }}
+                  />
+                </button>
+              </div>
+
+              {/* Reminder time picker */}
+              <AnimatePresence>
+                {officeSettings.notificationsEnabled && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between pl-5">
+                      <span className="text-xs text-gray-400">Remind me at</span>
+                      <input
+                        type="time"
+                        value={officeSettings.reminderTime}
+                        onChange={e => updateOfficeSettings({ reminderTime: e.target.value })}
+                        className="bg-transparent text-xs font-bold text-white border-none outline-none"
+                        style={{ colorScheme: 'dark' }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Camera — fills all remaining space, controls overlay inside */}
       <div className="relative flex-1 mx-4 mb-20 rounded-2xl overflow-hidden bg-black border border-cyan-900/40">
@@ -480,7 +714,12 @@ export default function OfficeErgonomics() {
                 <p className="text-lg font-bold gradient-text leading-tight">{alertCount}</p>
               </div>
               {/* Voice toggle */}
-              <button onClick={() => setVoiceEnabled(v => !v)}
+              <button onClick={() => {
+                const next = !voiceEnabled;
+                setVoiceEnabled(next);
+                localStorage.setItem('gestureflow_office_mute', next ? 'false' : 'true');
+                if (!next && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+              }}
                 className={`p-2 rounded-xl border transition-all ${voiceEnabled ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-white/5 border-white/10 text-slate-400'}`}>
                 {voiceEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
               </button>
@@ -503,6 +742,7 @@ export default function OfficeErgonomics() {
                 onClick={() => {
                   setVoiceId(p.id);
                   localStorage.setItem(VOICE_STORAGE_KEY, p.id);
+                  if (!voiceEnabledRef.current) return; // respect mute
                   if (p.id.startsWith('sfx-')) { playSfx(p.id); }
                   else if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();

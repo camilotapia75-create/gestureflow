@@ -140,6 +140,66 @@ function saveSmileData(patch: Partial<SmileData>) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...patch }));
 }
 
+// ── Push subscription helpers ──────────────────────────────────────────────
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
+
+function urlBase64ToUint8Array(base64: string): ArrayBuffer {
+  const pad  = '='.repeat((4 - base64.length % 4) % 4);
+  const b64  = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw  = window.atob(b64);
+  const out  = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out.buffer;
+}
+
+/** Convert local HH:MM to UTC HH:MM so server-side cron can match. */
+function localToUtcTime(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
+async function subscribeToPush(reminderTime: string): Promise<void> {
+  if (!VAPID_PUBLIC_KEY) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+  const reg = await navigator.serviceWorker.register('/sw.js');
+  await navigator.serviceWorker.ready;
+
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+
+  await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subscription: sub.toJSON(),
+      reminderTime: localToUtcTime(reminderTime),
+      source: 'smile',
+    }),
+  });
+}
+
+async function unsubscribeFromPush(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+  if (!reg) return;
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub) return;
+  await fetch('/api/push/subscribe', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: sub.endpoint }),
+  }).catch(() => {});
+  await sub.unsubscribe().catch(() => {});
+}
+
 // ── Notification helpers ───────────────────────────────────────────────────
 async function requestNotifPermission(): Promise<boolean> {
   if (typeof window === 'undefined' || !('Notification' in window)) return false;
@@ -337,24 +397,38 @@ export default function SmileQuota() {
     setSettings(next);
     const currentData = loadSmileData();
     scheduleNotification(next, currentData.count);
+    // Re-subscribe push with updated reminder time when time changes
+    if (next.notificationsEnabled && patch.reminderTime) {
+      subscribeToPush(next.reminderTime).catch(console.warn);
+    }
   }
 
   async function toggleNotifications() {
     if (settings.notificationsEnabled) {
       updateSettings({ notificationsEnabled: false });
+      unsubscribeFromPush().catch(() => {});
     } else {
-      // Try native push permission (works on Android/desktop Chrome; not iOS in-browser)
-      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-        await Notification.requestPermission().catch(() => {});
+      // Request permission (required for push; on iOS must be PWA on home screen)
+      let granted = false;
+      if (typeof Notification !== 'undefined') {
+        if (Notification.permission === 'granted') {
+          granted = true;
+        } else if (Notification.permission === 'default') {
+          const res = await Notification.requestPermission().catch(() => 'default');
+          granted = res === 'granted';
+        }
       }
-      // Always enable — in-app banner is the fallback for iOS Safari
+
       updateSettings({ notificationsEnabled: true });
-      // Fire a native confirmation if the browser supports it
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+
+      if (granted) {
+        // Subscribe to real Web Push (works even when app is closed)
+        subscribeToPush(settings.reminderTime).catch(console.warn);
+        // Confirmation notification
         setTimeout(() => {
           new Notification('Reminders are on! 😊', {
-            body: `You'll be reminded at ${settings.reminderTime} if you haven't hit your quota.`,
-            icon: '/icon-192.png',
+            body: `We'll remind you at ${settings.reminderTime} if you haven't hit your quota.`,
+            icon: '/icons/icon-192.png',
             tag: 'smile-quota-confirm',
           });
         }, 600);

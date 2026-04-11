@@ -14,6 +14,40 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// ── Web Push ──────────────────────────────────────────────────────────────────
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data?.json() ?? {}; } catch { data = { body: event.data?.text() }; }
+
+  const title   = data.title ?? 'GestureFlow';
+  const options = {
+    body:     data.body  ?? 'Time to check in!',
+    icon:     '/icons/icon-192.png',
+    badge:    '/icons/icon-192.png',
+    tag:      data.tag   ?? 'gestureflow',
+    renotify: true,
+    data:     { url: data.url ?? '/' },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = event.notification.data?.url ?? '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if ('focus' in c) {
+          c.navigate ? c.navigate(target) : null;
+          return c.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(target);
+    })
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
