@@ -524,20 +524,6 @@ export default function OfficeErgonomics() {
   const postureLabel = postureState === 'good' ? 'Good posture' : postureState === 'slouching' ? 'Slouching detected!' : 'Stand by…';
   const timeSinceAlert = lastAlertTime ? Math.round((Date.now() - lastAlertTime) / 1000) : null;
 
-  if (cameraState === 'idle' || cameraState === 'denied') {
-    return (
-      <CameraPermission
-        onRequest={() => {
-          if (autoStart) localStorage.setItem('gestureflow_camera_autostart', 'true');
-          startCamera();
-        }}
-        autoStart={autoStart}
-        onAutoStartChange={setAutoStart}
-        error={cameraState === 'denied' ? 'Camera access denied. Please allow camera in your browser settings.' : null}
-      />
-    );
-  }
-
   return (
     <div className="cyber-bg flex flex-col" style={{ height: '100dvh' }}>
 
@@ -652,12 +638,27 @@ export default function OfficeErgonomics() {
 
       {/* Camera — fills all remaining space, controls overlay inside */}
       <div className="relative flex-1 mx-4 mb-20 rounded-2xl overflow-hidden bg-black border border-cyan-900/40">
+
+        {/* Idle / denied: permission prompt fills the camera area */}
+        {(cameraState === 'idle' || cameraState === 'denied') && (
+          <CameraPermission
+            inline
+            onRequest={() => {
+              if (autoStart) localStorage.setItem('gestureflow_camera_autostart', 'true');
+              startCamera();
+            }}
+            autoStart={autoStart}
+            onAutoStartChange={setAutoStart}
+            error={cameraState === 'denied' ? 'Camera access denied. Please allow camera in your browser settings.' : null}
+          />
+        )}
+
         <video ref={videoRef} className="camera-feed absolute inset-0 w-full h-full object-cover" playsInline muted />
         <canvas ref={canvasRef} className="camera-feed absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }} />
 
         {/* Requesting — spinner while camera starts */}
         {cameraState === 'requesting' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#050510]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#050510] z-10">
             <div className="w-10 h-10 rounded-full border-2 animate-spin"
               style={{ borderColor: '#00f0ff', borderTopColor: 'transparent' }} />
             <p className="text-sm text-gray-400">Starting camera…</p>

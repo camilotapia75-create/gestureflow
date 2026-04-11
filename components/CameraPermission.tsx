@@ -8,11 +8,15 @@ interface Props {
   error?: string | null;
   autoStart?: boolean;
   onAutoStartChange?: (v: boolean) => void;
+  inline?: boolean; // render relative (fills parent) instead of fixed full-screen
 }
 
-export default function CameraPermission({ onRequest, error, autoStart, onAutoStartChange }: Props) {
+export default function CameraPermission({ onRequest, error, autoStart, onAutoStartChange, inline }: Props) {
   return (
-    <div className="fixed inset-0 bg-[#050510] flex flex-col items-center justify-center z-40 p-6">
+    <div className={inline
+      ? "relative w-full h-full flex flex-col items-center justify-center p-6 bg-[#050510]"
+      : "fixed inset-0 bg-[#050510] flex flex-col items-center justify-center z-40 p-6"
+    }>
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div
