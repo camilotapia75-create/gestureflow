@@ -232,52 +232,68 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center justify-between gap-4 pt-4 mb-1"
+          className="pt-4 mb-1"
         >
-          <h1 className="text-2xl font-black text-white tracking-tight">
-            <span style={{ color: '#00f0ff', textShadow: '0 0 12px #00f0ff55' }}>Gesture</span>Flow
-          </h1>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Signed in: Synced badge + sign-out icon */}
-            {!userLoading && user && (
-              <>
+          {/* Row 1: title + status + auth */}
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-black text-white tracking-tight flex-shrink-0">
+              <span style={{ color: '#00f0ff', textShadow: '0 0 12px #00f0ff55' }}>Gesture</span>Flow
+            </h1>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {/* Status badge */}
+              {!userLoading && (
                 <div
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold"
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold"
                   style={{
-                    background: 'rgba(0,255,136,0.08)',
-                    border: '1px solid rgba(0,255,136,0.2)',
-                    color: '#00ff88',
+                    background: user ? 'rgba(0,255,136,0.08)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${user ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                    color: user ? '#00ff88' : '#555577',
                   }}
                 >
-                  <Cloud size={12} />
-                  Synced
+                  <Cloud size={10} />
+                  {user ? 'Synced' : 'Local'}
                 </div>
-                <button
-                  onClick={handleSignOut}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center"
-                  style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
-                  title="Sign out"
-                >
-                  <LogOut size={15} className="text-gray-400" />
-                </button>
-              </>
-            )}
-            {/* Signed out: just the Sign In button */}
-            {!userLoading && !user && (
-              <button
-                onClick={() => router.push('/auth')}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
-                style={{
-                  background: 'rgba(0,240,255,0.1)',
-                  border: '1px solid rgba(0,240,255,0.2)',
-                  color: '#00f0ff',
-                }}
-              >
-                <LogIn size={13} />
-                Sign In
-              </button>
-            )}
+              )}
+              {/* Sign in / sign out */}
+              {!userLoading && (
+                user
+                  ? <button
+                      onClick={handleSignOut}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
+                      title="Sign out"
+                    >
+                      <LogOut size={14} className="text-gray-400" />
+                    </button>
+                  : <button
+                      onClick={() => router.push('/auth')}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold"
+                      style={{
+                        background: 'rgba(0,240,255,0.1)',
+                        border: '1px solid rgba(0,240,255,0.22)',
+                        color: '#00f0ff',
+                      }}
+                    >
+                      <LogIn size={11} />
+                      Sign In
+                    </button>
+              )}
+            </div>
           </div>
+
+          {/* Row 2 (signed-out only): sync prompt as subtle inline text */}
+          {!userLoading && !user && (
+            <button
+              onClick={() => router.push('/auth')}
+              className="flex items-center gap-1.5 mt-1 text-left"
+            >
+              <Cloud size={10} style={{ color: '#00f0ff', flexShrink: 0 }} />
+              <span className="text-[11px] text-gray-500">
+                Sync progress across devices —{' '}
+                <span className="text-cyan-400 font-semibold">sign in free</span>
+              </span>
+            </button>
+          )}
         </motion.div>
 
         {/* Greeting */}
@@ -285,7 +301,7 @@ export default function Dashboard() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.08 }}
-          className="text-gray-400 text-sm mb-4"
+          className="text-gray-400 text-sm mt-2 mb-4"
         >
           {greeting} 👋 What are you working on today?
         </motion.p>
