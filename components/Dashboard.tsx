@@ -159,6 +159,7 @@ export default function Dashboard() {
   const [cloudLoading, setCloudLoading] = useState(false);
   const [todaySmiles, setTodaySmiles] = useState(0);
   const [now, setNow] = useState(new Date());
+  const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
     setLocalStats(loadStats());
@@ -234,7 +235,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center justify-between pt-4 mb-1"
+          className="flex items-center justify-between gap-4 pt-4 mb-1"
         >
           <h1 className="text-2xl font-black text-white tracking-tight">
             <span style={{ color: '#00f0ff', textShadow: '0 0 12px #00f0ff55' }}>Gesture</span>Flow
@@ -376,41 +377,61 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* ── Progress label ── */}
-        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Your Progress</p>
-
-        {/* ── Stats grid ── */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <StatCard icon={Flame} label="Gestures" value={cloudLoading ? '…' : totalGestures} color="#ff6600" delay={0.1} />
-          <StatCard icon={Star} label="Best Impact" value={cloudLoading ? '…' : bestImpact} unit="%" color="#ffaa00" delay={0.15} />
-          <StatCard icon={Clock} label="Total Time" value={cloudLoading ? '…' : formatTime(totalTime)} color="#00f0ff" delay={0.2} />
-          <StatCard icon={Zap} label="Best Streak" value={cloudLoading ? '…' : bestStreak} unit="s" color="#7b2fff" delay={0.25} />
-        </div>
-
-        {/* ── Weekly activity chart ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="rounded-2xl p-4 mb-4"
-          style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
+        {/* ── See more toggle ── */}
+        <button
+          onClick={() => setShowMore(v => !v)}
+          className="flex items-center gap-1.5 text-xs font-bold mb-3 self-start"
+          style={{ color: '#00f0ff' }}
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-bold text-white">This Week</span>
-            <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#00f0ff' }}>
-              <TrendingUp size={13} />
-              <span>{totalSessions} sessions</span>
+          <motion.span
+            animate={{ rotate: showMore ? 180 : 0 }}
+            transition={{ duration: 0.25 }}
+            className="inline-block"
+          >
+            ▾
+          </motion.span>
+          {showMore ? 'See less' : 'See more'}
+        </button>
+
+        {/* ── Collapsible: stats + chart ── */}
+        {showMore && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+          >
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <StatCard icon={Flame} label="Gestures" value={cloudLoading ? '…' : totalGestures} color="#ff6600" delay={0} />
+              <StatCard icon={Star} label="Best Impact" value={cloudLoading ? '…' : bestImpact} unit="%" color="#ffaa00" delay={0} />
+              <StatCard icon={Clock} label="Total Time" value={cloudLoading ? '…' : formatTime(totalTime)} color="#00f0ff" delay={0} />
+              <StatCard icon={Zap} label="Best Streak" value={cloudLoading ? '…' : bestStreak} unit="s" color="#7b2fff" delay={0} />
             </div>
-          </div>
-          <div className="flex items-end justify-between gap-2">
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
-                <ActivityBar value={weekActivity[i]} max={maxActivity} />
-                <span className="text-[10px] text-gray-600">{day}</span>
+
+            {/* Weekly activity chart */}
+            <div
+              className="rounded-2xl p-4 mb-4"
+              style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-bold text-white">This Week</span>
+                <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#00f0ff' }}>
+                  <TrendingUp size={13} />
+                  <span>{totalSessions} sessions</span>
+                </div>
               </div>
-            ))}
-          </div>
-        </motion.div>
+              <div className="flex items-end justify-between gap-2">
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
+                    <ActivityBar value={weekActivity[i]} max={maxActivity} />
+                    <span className="text-[10px] text-gray-600">{day}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
       </div>
     </div>
