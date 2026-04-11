@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
-  Cloud, CloudOff, LogIn, LogOut,
+  Cloud, LogIn, LogOut,
   Flame, Star, Clock, Zap, TrendingUp,
   Mic, Monitor, Smile, ChevronRight,
   type LucideIcon,
@@ -237,57 +237,45 @@ export default function Dashboard() {
           <h1 className="text-2xl font-black text-white tracking-tight">
             <span style={{ color: '#00f0ff', textShadow: '0 0 12px #00f0ff55' }}>Gesture</span>Flow
           </h1>
-          <div className="flex items-center gap-2">
-            {/* Sync chip — shown left of Local/Sign In when signed out */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Signed in: Synced badge + sign-out icon */}
+            {!userLoading && user && (
+              <>
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold"
+                  style={{
+                    background: 'rgba(0,255,136,0.08)',
+                    border: '1px solid rgba(0,255,136,0.2)',
+                    color: '#00ff88',
+                  }}
+                >
+                  <Cloud size={12} />
+                  Synced
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
+                  title="Sign out"
+                >
+                  <LogOut size={15} className="text-gray-400" />
+                </button>
+              </>
+            )}
+            {/* Signed out: just the Sign In button */}
             {!userLoading && !user && (
               <button
                 onClick={() => router.push('/auth')}
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[8px] font-bold"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
                 style={{
-                  background: 'rgba(0,240,255,0.06)',
+                  background: 'rgba(0,240,255,0.1)',
                   border: '1px solid rgba(0,240,255,0.2)',
                   color: '#00f0ff',
                 }}
               >
-                <Cloud size={7} />
-                Sync progress
+                <LogIn size={13} />
+                Sign In
               </button>
-            )}
-            {!userLoading && (
-              <div
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold"
-                style={{
-                  background: user ? 'rgba(0,255,136,0.08)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${user ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.07)'}`,
-                  color: user ? '#00ff88' : '#444466',
-                }}
-              >
-                {user ? <Cloud size={12} /> : <CloudOff size={12} />}
-                {user ? 'Synced' : 'Local'}
-              </div>
-            )}
-            {!userLoading && (
-              user
-                ? <button
-                    onClick={handleSignOut}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: 'rgba(18,18,40,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
-                    title="Sign out"
-                  >
-                    <LogOut size={16} className="text-gray-400" />
-                  </button>
-                : <button
-                    onClick={() => router.push('/auth')}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
-                    style={{
-                      background: 'rgba(0,240,255,0.1)',
-                      border: '1px solid rgba(0,240,255,0.2)',
-                      color: '#00f0ff',
-                    }}
-                  >
-                    <LogIn size={13} />
-                    Sign In
-                  </button>
             )}
           </div>
         </motion.div>
