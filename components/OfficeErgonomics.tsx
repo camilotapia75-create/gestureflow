@@ -136,16 +136,34 @@ function playSfx(id: string) {
 }
 
 // ── Resolve best matching browser voice ──────────────────────────────────────
+// Known female/male names used by iOS/macOS/Android TTS voices
+const FEMALE_VOICE_NAMES = /karen|samantha|victoria|moira|tessa|hazel|kate|serena|emily|fiona|vicki|susan|alice|catherine|siri.*fem|google.*fem/i;
+const MALE_VOICE_NAMES   = /daniel|gordon|tom|rishi|alex|fred|bruce|siri.*mal|google.*mal/i;
+
 function resolveVoice(profileId: VoiceId): SpeechSynthesisVoice | null {
   const voices = window.speechSynthesis.getVoices();
   const p = VOICE_PROFILES.find(v => v.id === profileId)!;
-  // 1. Try name preference regex + lang
+  const isFemale = profileId.endsWith('-f');
+
+  // 1. Preferred name match within the target language
   const byName = voices.find(v => v.lang.startsWith(p.lang.slice(0, 5)) && p.prefer.test(v.name));
   if (byName) return byName;
-  // 2. Any voice matching lang
-  const byLang = voices.find(v => v.lang.startsWith(p.lang.slice(0, 5)));
+
+  // 2. Any same-lang voice — skip obviously wrong gender (e.g. "Daniel" for Sophie)
+  const byLang = voices.find(v =>
+    v.lang.startsWith(p.lang.slice(0, 5)) &&
+    (isFemale ? !MALE_VOICE_NAMES.test(v.name) : !FEMALE_VOICE_NAMES.test(v.name))
+  );
   if (byLang) return byLang;
-  // 3. Any en- voice
+
+  // 3. Cross-region English fallback matching gender (iOS: Karen=AU-F, Samantha=US-F, etc.)
+  const byGender = voices.find(v =>
+    v.lang.startsWith('en') &&
+    (isFemale ? FEMALE_VOICE_NAMES.test(v.name) : MALE_VOICE_NAMES.test(v.name))
+  );
+  if (byGender) return byGender;
+
+  // 4. Any English voice
   return voices.find(v => v.lang.startsWith('en')) ?? null;
 }
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Camera, Settings, Bell, BellOff, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Camera, Settings, Bell, BellOff, ChevronDown, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useFaceLandmarker } from '@/hooks/useFaceLandmarker';
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
@@ -279,8 +279,9 @@ export default function SmileQuota() {
   const sessionModeRef  = useRef<SessionMode>('1x10');
 
   // State
-  const scrollRef      = useRef<HTMLDivElement>(null);
-  const [showScrollHint, setShowScrollHint] = useState(true);
+  const scrollRef        = useRef<HTMLDivElement>(null);
+  const [showScrollHint,    setShowScrollHint]    = useState(true);
+  const [showReminderBanner, setShowReminderBanner] = useState(false);
 
   const [settings,     setSettings]     = useState<SmileSettings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
@@ -342,23 +343,51 @@ export default function SmileQuota() {
     if (settings.notificationsEnabled) {
       updateSettings({ notificationsEnabled: false });
     } else {
-      const granted = await requestNotifPermission();
-      if (granted) {
-        updateSettings({ notificationsEnabled: true });
-        // Fire a confirmation notification immediately so the user knows it works
+      // Try native push permission (works on Android/desktop Chrome; not iOS in-browser)
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        await Notification.requestPermission().catch(() => {});
+      }
+      // Always enable — in-app banner is the fallback for iOS Safari
+      updateSettings({ notificationsEnabled: true });
+      // Fire a native confirmation if the browser supports it
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         setTimeout(() => {
-          const d = loadSmileData();
           new Notification('Reminders are on! 😊', {
             body: `You'll be reminded at ${settings.reminderTime} if you haven't hit your quota.`,
             icon: '/icon-192.png',
             tag: 'smile-quota-confirm',
           });
-          // Schedule the real daily reminder too
-          scheduleNotification({ ...settings, notificationsEnabled: true }, d.count);
-        }, 800);
+        }, 600);
       }
     }
   }
+
+  // In-app reminder check — fires every 30 s, works on every platform including iOS
+  useEffect(() => {
+    if (!settings.notificationsEnabled) return;
+    function checkTime() {
+      const d = loadSmileData();
+      if (d.count >= QUOTA) return;
+      const now = new Date();
+      const [h, m] = settings.reminderTime.split(':').map(Number);
+      if (now.getHours() !== h || now.getMinutes() !== m) return;
+      const last = localStorage.getItem(NOTIF_KEY);
+      if (last === getTodayStr()) return;
+      localStorage.setItem(NOTIF_KEY, getTodayStr());
+      setShowReminderBanner(true);
+      // Native notification as bonus if available
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification('Smile Quota Reminder 😊', {
+          body: `${d.count}/10 smiles done — finish strong!`,
+          icon: '/icon-192.png',
+          tag: 'smile-quota',
+        });
+      }
+    }
+    checkTime(); // run immediately in case we just opened the app at reminder time
+    const id = setInterval(checkTime, 30_000);
+    return () => clearInterval(id);
+  }, [settings.notificationsEnabled, settings.reminderTime]);
 
   // ── Camera ────────────────────────────────────────────────────────────
   const requestCamera = useCallback(async () => {
@@ -491,6 +520,29 @@ export default function SmileQuota() {
   // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="relative" style={{ height: '100dvh' }}>
+
+    {/* ── In-app reminder banner (works on all platforms incl. iOS) ── */}
+    <AnimatePresence>
+      {showReminderBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          className="absolute top-16 left-4 right-4 z-[60] rounded-2xl px-4 py-3 flex items-center gap-3"
+          style={{ background: 'rgba(0,240,255,0.12)', border: '1px solid rgba(0,240,255,0.4)', backdropFilter: 'blur(16px)' }}
+        >
+          <Bell size={18} style={{ color: '#00f0ff', flexShrink: 0 }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white leading-tight">Smile reminder!</p>
+            <p className="text-xs text-gray-400 mt-0.5">You haven't hit your 10-smile quota yet today 😊</p>
+          </div>
+          <button onClick={() => setShowReminderBanner(false)} className="flex-shrink-0 p-1">
+            <X size={15} className="text-gray-400" />
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
     <div className="page-scroll cyber-bg scanline h-full" ref={scrollRef}>
       <div className="min-h-full px-5 pt-safe pb-28 flex flex-col">
 
@@ -779,8 +831,12 @@ export default function SmileQuota() {
           transition={{ delay: 0.1, duration: 0.4 }}
           className="rounded-3xl overflow-hidden relative mb-6 mx-auto"
           style={{
-            aspectRatio: '4/3',
-            width: '65%',
+            // Idle/denied: natural width + min-height so all content is visible
+            // Active: fixed aspect ratio at 65% width (35% smaller than full)
+            ...(cameraState === 'granted' || cameraState === 'requesting'
+              ? { aspectRatio: '4/3', width: '65%' }
+              : { width: '92%', minHeight: 260 }
+            ),
             background: 'rgba(10,10,26,0.95)',
             border: isSmiling
               ? '2px solid #00f0ff'
