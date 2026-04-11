@@ -490,7 +490,8 @@ export default function SmileQuota() {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="page-scroll cyber-bg scanline relative" ref={scrollRef}>
+    <div className="relative" style={{ height: '100dvh' }}>
+    <div className="page-scroll cyber-bg scanline h-full" ref={scrollRef}>
       <div className="min-h-full px-5 pt-safe pb-28 flex flex-col">
 
         {/* ── Header ── */}
@@ -1052,26 +1053,27 @@ export default function SmileQuota() {
       </div>
 
       <BottomNav />
+    </div>
 
-      {/* Scroll-down hint — disappears after first scroll */}
-      <AnimatePresence>
-        {showScrollHint && (
+    {/* Scroll-down hint — outside the scroll container so iOS renders it reliably */}
+    <AnimatePresence>
+      {showScrollHint && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.3 } }}
+          className="absolute bottom-28 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 pointer-events-none z-50"
+        >
+          <p className="text-[11px] text-gray-400 font-semibold tracking-wide">scroll for more</p>
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.3 } }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 pointer-events-none z-40"
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <p className="text-[10px] text-gray-500 font-medium">scroll for more</p>
-            <motion.div
-              animate={{ y: [0, 5, 0] }}
-              transition={{ duration: 1.3, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <ChevronDown size={16} className="text-gray-500" />
-            </motion.div>
+            <ChevronDown size={20} style={{ color: '#00f0ff', filter: 'drop-shadow(0 0 4px #00f0ff88)' }} />
           </motion.div>
-        )}
-      </AnimatePresence>
+        </motion.div>
+      )}
+    </AnimatePresence>
     </div>
   );
 }
