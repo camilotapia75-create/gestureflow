@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestureflow-v2';
+const CACHE_NAME = 'gestureflow-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
