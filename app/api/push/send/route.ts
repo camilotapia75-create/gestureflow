@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import webpush from 'web-push';
 import { createServiceClient } from '@/lib/supabaseServer';
 
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL ?? 'admin@gestureflow.app'}`,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
-
 const MESSAGES: Record<string, { title: string; body: string; url: string; tag: string }> = {
   smile: {
     title: 'Smile Quota Reminder 😊',
@@ -22,6 +16,22 @@ const MESSAGES: Record<string, { title: string; body: string; url: string; tag: 
     tag:   'office-posture',
   },
 };
+
+// Lazily initialise VAPID — env vars are available at request time, not build time
+let vapidInitialised = false;
+function ensureVapid() {
+  if (vapidInitialised) return true;
+  const pub  = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) return false;
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_EMAIL ?? 'admin@gestureflow.app'}`,
+    pub,
+    priv,
+  );
+  vapidInitialised = true;
+  return true;
+}
 
 // GET  /api/push/send  — called by Vercel Cron every minute
 // Also accepts POST for manual testing
@@ -39,18 +49,18 @@ async function sendReminders(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+  if (!ensureVapid()) {
     return NextResponse.json({ error: 'VAPID not configured' }, { status: 500 });
   }
 
   // Current UTC time — match subscriptions within a 2-minute window
-  const now   = new Date();
-  const hh    = String(now.getUTCHours()).padStart(2, '0');
-  const mm    = String(now.getUTCMinutes()).padStart(2, '0');
+  const now  = new Date();
+  const hh   = String(now.getUTCHours()).padStart(2, '0');
+  const mm   = String(now.getUTCMinutes()).padStart(2, '0');
   // Also check previous minute to handle cron jitter
-  const prev  = new Date(now.getTime() - 60_000);
-  const phh   = String(prev.getUTCHours()).padStart(2, '0');
-  const pmm   = String(prev.getUTCMinutes()).padStart(2, '0');
+  const prev = new Date(now.getTime() - 60_000);
+  const phh  = String(prev.getUTCHours()).padStart(2, '0');
+  const pmm  = String(prev.getUTCMinutes()).padStart(2, '0');
 
   const supabase = createServiceClient();
   const { data: subs, error } = await supabase
@@ -75,7 +85,6 @@ async function sendReminders(req: NextRequest) {
     } catch (err: unknown) {
       const statusCode = (err as { statusCode?: number }).statusCode;
       if (statusCode === 410 || statusCode === 404) {
-        // Subscription expired — remove it
         toDelete.push(sub.endpoint);
       }
     }
