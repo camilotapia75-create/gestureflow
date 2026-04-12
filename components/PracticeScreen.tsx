@@ -857,7 +857,7 @@ export default function PracticeScreen() {
   }
 
   // ── Render: Intro (shown once before camera) ──────────────────────────
-  if (showIntro && perm === 'unknown') {
+  if (showIntro) {
     return (
       <PracticeIntro
         onStart={() => setShowIntro(false)}
