@@ -314,7 +314,7 @@ function PracticeIntro({ onStart, onDontShow }: { onStart: () => void; onDontSho
           style={{ background: 'rgba(12,12,32,0.95)', border: '1px solid rgba(0,240,255,0.12)' }}>
           <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#00f0ff' }}>How it works</p>
           <p className="text-sm text-gray-300 leading-relaxed">
-            Begin with a gentle <strong className="text-white">5-minute introduction</strong> to your personal presentation coach. Once you feel at ease, warm up with a few powerful techniques and a short practice segment. When you&apos;re ready, deliver and record a full presentation.
+            Begin with a gentle <strong className="text-white">2-minute introduction</strong> to your personal presentation coach. Once you feel at ease, warm up with a few powerful techniques and a short practice segment. When you&apos;re ready, deliver and record a full presentation.
           </p>
           <p className="text-sm text-gray-300 leading-relaxed mt-3">
             Your video can be <strong className="text-white">downloaded and reviewed</strong> at any time. You&apos;ll receive clear, insightful feedback from your coach highlighting exactly where you shine and where there&apos;s room to elevate your delivery — so you can improve with confidence and enjoyment.
