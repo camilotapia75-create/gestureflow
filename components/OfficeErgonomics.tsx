@@ -578,6 +578,37 @@ export default function OfficeErgonomics() {
         )}
       </AnimatePresence>
 
+      {/* ── Daily ergonomic fact banner ── */}
+      <AnimatePresence>
+        {showFactBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            className="absolute top-16 left-4 right-4 z-[59] rounded-2xl px-4 py-3"
+            style={{
+              background: 'rgba(5,5,20,0.94)',
+              border: '1px solid rgba(0,240,255,0.3)',
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 0 24px rgba(0,240,255,0.1)',
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1.5 }}>💡</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: '#00f0ff' }}>
+                  Ergonomic Fact of the Day
+                </p>
+                <p className="text-xs text-gray-300 leading-relaxed">{todayFact}</p>
+              </div>
+              <button onClick={() => setShowFactBanner(false)} className="flex-shrink-0 p-1 mt-0.5">
+                <X size={13} className="text-gray-500" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="pt-safe px-4 pt-4 pb-2 flex items-center gap-3 shrink-0">
         <button
@@ -684,40 +715,6 @@ export default function OfficeErgonomics() {
 
         <video ref={videoRef} className="camera-feed absolute inset-0 w-full h-full object-cover" playsInline muted />
         <canvas ref={canvasRef} className="camera-feed absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }} />
-
-        {/* Daily ergonomic fact banner */}
-        <AnimatePresence>
-          {showFactBanner && (
-            <motion.div
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              className="absolute top-3 left-3 right-3 z-30 rounded-2xl px-4 py-3"
-              style={{
-                background: 'rgba(5,5,20,0.88)',
-                border: '1px solid rgba(0,240,255,0.35)',
-                backdropFilter: 'blur(16px)',
-                boxShadow: '0 0 20px rgba(0,240,255,0.12)',
-              }}
-            >
-              <div className="flex items-start gap-3">
-                <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.4 }}>💡</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: '#00f0ff' }}>
-                    Ergonomic Fact of the Day
-                  </p>
-                  <p className="text-xs text-gray-200 leading-relaxed">{todayFact}</p>
-                </div>
-                <button
-                  onClick={() => setShowFactBanner(false)}
-                  className="flex-shrink-0 p-0.5 mt-0.5"
-                >
-                  <X size={13} className="text-gray-500" />
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Requesting — spinner while camera starts */}
         {cameraState === 'requesting' && (
