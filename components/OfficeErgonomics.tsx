@@ -324,7 +324,7 @@ export default function OfficeErgonomics() {
     setOfficeSettings(loadOfficeSettings());
   }, []);
 
-  // Daily ergonomic fact — one new fact per day, visible for 10 s
+  // Daily ergonomic fact — one new fact per day, stays until dismissed
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
     if (localStorage.getItem(FACT_DATE_KEY) === today) return;
@@ -334,8 +334,6 @@ export default function OfficeErgonomics() {
     localStorage.setItem(FACT_INDEX_KEY, String(next));
     setTodayFact(ERGONOMIC_FACTS[next]);
     setShowFactBanner(true);
-    const t = setTimeout(() => setShowFactBanner(false), 10_000);
-    return () => clearTimeout(t);
   }, []);
 
   // In-app reminder check — every 30 s, works on all platforms including iOS
@@ -717,19 +715,6 @@ export default function OfficeErgonomics() {
                   <X size={13} className="text-gray-500" />
                 </button>
               </div>
-              {/* 10-second countdown bar */}
-              <motion.div
-                className="mt-2 h-0.5 rounded-full"
-                style={{ background: 'rgba(0,240,255,0.25)' }}
-              >
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ background: 'linear-gradient(90deg,#00f0ff,#7b2fff)' }}
-                  initial={{ width: '100%' }}
-                  animate={{ width: '0%' }}
-                  transition={{ duration: 10, ease: 'linear' }}
-                />
-              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
