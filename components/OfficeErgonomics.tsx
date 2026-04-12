@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Monitor, Volume2, VolumeX, CheckCircle2, AlertTriangle, ScanLine, ArrowLeft, ChevronRight, Settings, Bell, BellOff, X } from 'lucide-react';
 import CameraPermission from './CameraPermission';
+import BottomNav from './BottomNav';
 import { usePoseLandmarker } from '@/hooks/usePoseLandmarker';
 import { drawGlowingSkeleton } from '@/lib/gestureAnalysis';
 
@@ -772,6 +773,8 @@ export default function OfficeErgonomics() {
           </div>
         </div>
       </div>
+
+      <BottomNav />
     </div>
   );
 }
