@@ -14,7 +14,7 @@ interface Props {
 export default function CameraPermission({ onRequest, error, autoStart, onAutoStartChange, inline }: Props) {
   return (
     <div className={inline
-      ? "relative w-full h-full flex flex-col items-center justify-center p-3 bg-[#050510] overflow-y-auto"
+      ? "relative w-full h-full flex flex-col items-center justify-center p-3 pb-[32%] bg-[#050510] overflow-y-auto"
       : "fixed inset-0 bg-[#050510] flex flex-col items-center justify-center z-40 p-6"
     }>
       {/* Background glow */}
