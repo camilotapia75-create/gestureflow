@@ -271,6 +271,91 @@ function ImpactArc({ impact }: { impact: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Intro screen shown once before camera starts
+// ─────────────────────────────────────────────────────────────────────────
+const INTRO_SEEN_KEY = 'gestureflow_practice_intro_seen';
+
+function PracticeIntro({ onStart, onDontShow }: { onStart: () => void; onDontShow: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-[#050510] flex flex-col items-center justify-center p-6 z-50 overflow-y-auto">
+      {/* Ambient glows */}
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(0,240,255,0.07) 0%, transparent 70%)' }} />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(123,47,255,0.07) 0%, transparent 70%)' }} />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 32 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
+        className="relative z-10 flex flex-col items-center text-center max-w-lg w-full"
+      >
+        {/* Icon */}
+        <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6"
+          style={{ background: 'linear-gradient(135deg, #00f0ff22, #7b2fff22)', border: '1px solid rgba(0,240,255,0.2)', boxShadow: '0 0 40px rgba(0,240,255,0.15)' }}>
+          <span style={{ fontSize: 38 }}>🎤</span>
+        </div>
+
+        {/* Title */}
+        <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#00f0ff' }}>
+          Presentation Coach
+        </div>
+        <h1 className="text-3xl font-black text-white leading-tight mb-4">
+          Your personal coach,<br/>
+          <span style={{ background: 'linear-gradient(135deg,#00f0ff,#7b2fff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            ready when you are.
+          </span>
+        </h1>
+
+        {/* How it works */}
+        <div className="w-full rounded-2xl p-5 mb-4 text-left"
+          style={{ background: 'rgba(12,12,32,0.95)', border: '1px solid rgba(0,240,255,0.12)' }}>
+          <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#00f0ff' }}>How it works</p>
+          <p className="text-sm text-gray-300 leading-relaxed">
+            Begin with a gentle <strong className="text-white">5-minute introduction</strong> to your personal presentation coach. Once you feel at ease, warm up with a few powerful techniques and a short practice segment. When you&apos;re ready, deliver and record a full presentation.
+          </p>
+          <p className="text-sm text-gray-300 leading-relaxed mt-3">
+            Your video can be <strong className="text-white">downloaded and reviewed</strong> at any time. You&apos;ll receive clear, insightful feedback from your coach highlighting exactly where you shine and where there&apos;s room to elevate your delivery — so you can improve with confidence and enjoyment.
+          </p>
+        </div>
+
+        {/* Powered by */}
+        <div className="w-full rounded-2xl p-5 mb-6 text-left"
+          style={{ background: 'rgba(123,47,255,0.07)', border: '1px solid rgba(123,47,255,0.2)' }}>
+          <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#a78bfa' }}>Powered by</p>
+          <p className="text-sm text-gray-300 leading-relaxed">
+            Logic and parameters carefully calibrated by AI, drawing from in-depth analysis of the world&apos;s most effective communicators: visionary CEOs such as{' '}
+            <strong className="text-white">Steve Jobs</strong> (Apple) and{' '}
+            <strong className="text-white">Jensen Huang</strong> (Nvidia), distinguished{' '}
+            <strong className="text-white">Ivy League professors</strong>, and the most impactful{' '}
+            <strong className="text-white">TED speakers</strong>.
+          </p>
+        </div>
+
+        {/* CTA */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={onStart}
+          className="w-full py-4 rounded-2xl font-black text-lg text-[#050510] tracking-wide mb-3"
+          style={{ background: 'linear-gradient(135deg, #00f0ff, #7b2fff)', boxShadow: '0 0 28px rgba(0,240,255,0.35), 0 4px 20px rgba(0,0,0,0.4)' }}
+        >
+          Let&apos;s Begin
+        </motion.button>
+
+        <button
+          onClick={onDontShow}
+          className="text-xs text-gray-500 hover:text-gray-400 transition-colors py-2"
+        >
+          Don&apos;t show me this again
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Main PracticeScreen
 // ─────────────────────────────────────────────────────────────────────────
 type PermState = 'unknown' | 'requesting' | 'granted' | 'denied';
@@ -286,6 +371,9 @@ export default function PracticeScreen() {
   const [perm, setPerm] = useState<PermState>('unknown');
   const [permError, setPermError] = useState<string | null>(null);
   const [autoStart, setAutoStart] = useState(false);
+  const [showIntro, setShowIntro] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem(INTRO_SEEN_KEY) !== 'true'
+  );
   const [showSummary, setShowSummary] = useState(false);
   const [sessionEnded, setSessionEnded] = useState<{
     duration: number;
@@ -765,6 +853,19 @@ export default function PracticeScreen() {
         />
         <p className="text-sm text-gray-400">Starting camera…</p>
       </div>
+    );
+  }
+
+  // ── Render: Intro (shown once before camera) ──────────────────────────
+  if (showIntro && perm === 'unknown') {
+    return (
+      <PracticeIntro
+        onStart={() => setShowIntro(false)}
+        onDontShow={() => {
+          localStorage.setItem(INTRO_SEEN_KEY, 'true');
+          setShowIntro(false);
+        }}
+      />
     );
   }
 
