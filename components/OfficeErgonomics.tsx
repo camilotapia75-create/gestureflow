@@ -19,6 +19,20 @@ const CAL_STORAGE_KEY     = 'gestureflow_office_calibration';
 const VOICE_STORAGE_KEY   = 'gestureflow_office_voice';
 const OFFICE_SETTINGS_KEY = 'gestureflow_office_settings';
 const OFFICE_NOTIF_KEY    = 'gestureflow_office_last_notif';
+const FACT_DATE_KEY       = 'gestureflow_office_fact_date';
+const FACT_INDEX_KEY      = 'gestureflow_office_fact_index';
+
+const ERGONOMIC_FACTS = [
+  'Good posture counters the 47% increase in mental fatigue seen with slouched sitting, supporting better focus and attention.',
+  'Ergonomic practices that maintain good posture are linked to 47% lower odds of lower back pain in office workers.',
+  'Good posture helps office workers avoid up to 66% productivity loss associated with poor slouching.',
+  'Workplace ergonomic interventions supporting good posture reduce neck musculoskeletal disorders by 42.2%.',
+  'Ergonomic adjustments that promote good posture improve productivity metrics by 21% over six months in desk workers.',
+  'Forward head posture ("tech neck") reduces vertebral artery blood flow by 31% — good posture protects brain circulation.',
+  'People with poor ergonomic setups are 2.5× more likely to report frequent tension-type headaches.',
+  'Neck and upper back pain from poor ergonomics affects up to 70% of office workers weekly, often leading to headaches.',
+  'Poor posture contributes to cervicogenic headaches, which account for 17.8% of all headaches — higher in desk workers.',
+];
 
 interface OfficeSettings {
   notificationsEnabled: boolean;
@@ -271,6 +285,8 @@ export default function OfficeErgonomics() {
   const [showSettings,  setShowSettings]  = useState(false);
   const [officeSettings, setOfficeSettings] = useState<OfficeSettings>(DEFAULT_OFFICE_SETTINGS);
   const [showReminderBanner, setShowReminderBanner] = useState(false);
+  const [showFactBanner, setShowFactBanner] = useState(false);
+  const [todayFact,     setTodayFact]     = useState('');
 
   const router = useRouter();
   const { detect, isReady } = usePoseLandmarker();
@@ -306,6 +322,20 @@ export default function OfficeErgonomics() {
       }
     } catch { /* ignore */ }
     setOfficeSettings(loadOfficeSettings());
+  }, []);
+
+  // Daily ergonomic fact — one new fact per day, visible for 10 s
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(FACT_DATE_KEY) === today) return;
+    const last = parseInt(localStorage.getItem(FACT_INDEX_KEY) ?? '-1', 10);
+    const next = (last + 1) % ERGONOMIC_FACTS.length;
+    localStorage.setItem(FACT_DATE_KEY, today);
+    localStorage.setItem(FACT_INDEX_KEY, String(next));
+    setTodayFact(ERGONOMIC_FACTS[next]);
+    setShowFactBanner(true);
+    const t = setTimeout(() => setShowFactBanner(false), 10_000);
+    return () => clearTimeout(t);
   }, []);
 
   // In-app reminder check — every 30 s, works on all platforms including iOS
@@ -656,6 +686,53 @@ export default function OfficeErgonomics() {
 
         <video ref={videoRef} className="camera-feed absolute inset-0 w-full h-full object-cover" playsInline muted />
         <canvas ref={canvasRef} className="camera-feed absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }} />
+
+        {/* Daily ergonomic fact banner */}
+        <AnimatePresence>
+          {showFactBanner && (
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              className="absolute top-3 left-3 right-3 z-30 rounded-2xl px-4 py-3"
+              style={{
+                background: 'rgba(5,5,20,0.88)',
+                border: '1px solid rgba(0,240,255,0.35)',
+                backdropFilter: 'blur(16px)',
+                boxShadow: '0 0 20px rgba(0,240,255,0.12)',
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.4 }}>💡</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: '#00f0ff' }}>
+                    Ergonomic Fact of the Day
+                  </p>
+                  <p className="text-xs text-gray-200 leading-relaxed">{todayFact}</p>
+                </div>
+                <button
+                  onClick={() => setShowFactBanner(false)}
+                  className="flex-shrink-0 p-0.5 mt-0.5"
+                >
+                  <X size={13} className="text-gray-500" />
+                </button>
+              </div>
+              {/* 10-second countdown bar */}
+              <motion.div
+                className="mt-2 h-0.5 rounded-full"
+                style={{ background: 'rgba(0,240,255,0.25)' }}
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: 'linear-gradient(90deg,#00f0ff,#7b2fff)' }}
+                  initial={{ width: '100%' }}
+                  animate={{ width: '0%' }}
+                  transition={{ duration: 10, ease: 'linear' }}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Requesting — spinner while camera starts */}
         {cameraState === 'requesting' && (
