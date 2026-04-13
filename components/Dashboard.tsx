@@ -51,7 +51,7 @@ function ToolCard({
       transition={{ delay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="w-full relative overflow-hidden rounded-2xl p-3 flex flex-col items-center text-center justify-start gap-0 min-h-[160px]"
+      className="w-full relative overflow-hidden rounded-2xl p-3 md:p-7 flex flex-col items-center text-center justify-start gap-0 min-h-[160px] md:min-h-0 md:aspect-square"
       style={{
         background: 'rgba(18,18,40,0.85)',
         border: `1px solid ${color}28`,
@@ -66,22 +66,23 @@ function ToolCard({
 
       {/* Icon badge */}
       <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 mt-1 flex-shrink-0"
+        className="w-11 h-11 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-5 mt-1 md:mt-3 flex-shrink-0"
         style={{ background: `${color}18`, border: `1px solid ${color}38` }}
       >
-        <Icon size={20} style={{ color, filter: `drop-shadow(0 0 7px ${color}99)` }} />
+        <Icon size={20} className="md:hidden" style={{ color, filter: `drop-shadow(0 0 7px ${color}99)` }} />
+        <Icon size={28} className="hidden md:block" style={{ color, filter: `drop-shadow(0 0 7px ${color}99)` }} />
       </div>
 
       {/* Text */}
-      <p className="text-[11px] font-black text-white leading-snug mb-1 w-full">{name}</p>
-      <p className="text-[10px] font-semibold leading-snug mb-auto w-full" style={{ color: statColor }}>{stat}</p>
+      <p className="text-[11px] md:text-base font-black text-white leading-snug mb-1 w-full">{name}</p>
+      <p className="text-[10px] md:text-sm font-semibold leading-snug mb-auto w-full" style={{ color: statColor }}>{stat}</p>
 
       {/* CTA button */}
       <div
-        className="w-full mt-3 py-2 rounded-xl flex items-center justify-center"
+        className="w-full mt-3 md:mt-5 py-2 md:py-3 rounded-xl flex items-center justify-center"
         style={{ background: `${color}18`, border: `1px solid ${color}35` }}
       >
-        <span className="text-[11px] font-black" style={{ color }}>{cta}</span>
+        <span className="text-[11px] md:text-sm font-black" style={{ color }}>{cta}</span>
       </div>
     </motion.button>
   );
@@ -342,7 +343,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* ── 3 Tool Cards ── */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-3 md:gap-5 mb-6">
           <ToolCard
             icon={Mic}
             name="Presentation Coach"
