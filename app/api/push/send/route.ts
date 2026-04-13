@@ -50,7 +50,12 @@ async function sendReminders(req: NextRequest) {
   }
 
   if (!ensureVapid()) {
-    return NextResponse.json({ error: 'VAPID not configured' }, { status: 500 });
+    const pub  = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const priv = process.env.VAPID_PRIVATE_KEY;
+    return NextResponse.json({
+      error: 'VAPID not configured',
+      debug: { pub: pub ? `set (${pub.length} chars)` : 'MISSING', priv: priv ? 'set' : 'MISSING' },
+    }, { status: 500 });
   }
 
   // Current UTC hour — cron runs every hour so we match on HH only.
