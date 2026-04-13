@@ -53,23 +53,20 @@ async function sendReminders(req: NextRequest) {
     return NextResponse.json({ error: 'VAPID not configured' }, { status: 500 });
   }
 
-  // Current UTC time — match subscriptions within a 2-minute window
-  const now  = new Date();
-  const hh   = String(now.getUTCHours()).padStart(2, '0');
-  const mm   = String(now.getUTCMinutes()).padStart(2, '0');
-  // Also check previous minute to handle cron jitter
-  const prev = new Date(now.getTime() - 60_000);
-  const phh  = String(prev.getUTCHours()).padStart(2, '0');
-  const pmm  = String(prev.getUTCMinutes()).padStart(2, '0');
+  // Current UTC hour — cron runs every hour so we match on HH only.
+  // Users pick HH:MM locally which is stored as UTC HH:MM; we match by hour
+  // to fire within the same 60-minute window regardless of the stored minute.
+  const now = new Date();
+  const hh  = String(now.getUTCHours()).padStart(2, '0');
 
   const supabase = createServiceClient();
   const { data: subs, error } = await supabase
     .from('push_subscriptions')
     .select('*')
-    .in('reminder_time', [`${hh}:${mm}`, `${phh}:${pmm}`]);
+    .like('reminder_time', `${hh}:%`);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!subs || subs.length === 0) return NextResponse.json({ sent: 0, time: `${hh}:${mm}` });
+  if (!subs || subs.length === 0) return NextResponse.json({ sent: 0, hour: hh });
 
   let sent = 0;
   const toDelete: string[] = [];
@@ -94,5 +91,5 @@ async function sendReminders(req: NextRequest) {
     await supabase.from('push_subscriptions').delete().in('endpoint', toDelete);
   }
 
-  return NextResponse.json({ sent, checked: subs.length, time: `${hh}:${mm}` });
+  return NextResponse.json({ sent, checked: subs.length, hour: hh });
 }
