@@ -412,6 +412,7 @@ export default function PracticeScreen() {
   const gestureRef = useRef('');
   const elapsedRef = useRef(0);
   const gesturesCountRef = useRef(0);
+  const tipsRef = useRef<{ id: string; text: string; icon: string }[]>([]);
   const streakRef = useRef(0);
   const isRecordingRef = useRef(false);
 
@@ -730,6 +731,143 @@ export default function PracticeScreen() {
             cctx.textAlign = 'left';
             cctx.fillText('REC', W * 0.5 - 14, H * 0.948);
           }
+
+          // 13. Skeleton color legend (right side, below impact badge)
+          {
+            const legendItems: [string, string][] = [
+              ['#00ff88', 'Great form'],
+              ['#ffaa00', 'Neutral'],
+              ['#ff4444', 'Slouching!'],
+            ];
+            const legendX = W - W * 0.03;
+            const legendStartY = H * 0.2;
+            const rowH = H * 0.045;
+            // background pill
+            const pillW = W * 0.22;
+            const pillH = legendItems.length * rowH + H * 0.016;
+            const pillX = W - pillW - W * 0.015;
+            const pillY = legendStartY - H * 0.02;
+            cctx.save();
+            cctx.fillStyle = 'rgba(5,5,16,0.72)';
+            const cr = H * 0.018;
+            cctx.beginPath();
+            cctx.moveTo(pillX + cr, pillY);
+            cctx.lineTo(pillX + pillW - cr, pillY);
+            cctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + cr, cr);
+            cctx.lineTo(pillX + pillW, pillY + pillH - cr);
+            cctx.arcTo(pillX + pillW, pillY + pillH, pillX + pillW - cr, pillY + pillH, cr);
+            cctx.lineTo(pillX + cr, pillY + pillH);
+            cctx.arcTo(pillX, pillY + pillH, pillX, pillY + pillH - cr, cr);
+            cctx.lineTo(pillX, pillY + cr);
+            cctx.arcTo(pillX, pillY, pillX + cr, pillY, cr);
+            cctx.closePath();
+            cctx.fill();
+            legendItems.forEach(([color, label], i) => {
+              const cy = legendStartY + i * rowH + rowH * 0.3;
+              const cx = pillX + H * 0.016;
+              cctx.fillStyle = color;
+              cctx.beginPath();
+              cctx.arc(cx, cy, H * 0.009, 0, Math.PI * 2);
+              cctx.fill();
+              cctx.fillStyle = '#ccccdd';
+              cctx.font = `600 ${H * 0.018}px Inter, sans-serif`;
+              cctx.textAlign = 'left';
+              cctx.fillText(label, cx + H * 0.018, cy + H * 0.007);
+            });
+            cctx.restore();
+          }
+
+          // 14. Coach tips (bottom area, above bottom bar)
+          {
+            const tips = tipsRef.current;
+            if (tips.length > 0) {
+              const tipFontSize = H * 0.019;
+              const tipPadH = H * 0.012;
+              const tipPadW = W * 0.025;
+              const tipSpacing = H * 0.012;
+              const tipMaxW = W * 0.65;
+              cctx.font = `700 ${tipFontSize}px Inter, sans-serif`;
+              const tipHeights = tips.map(() => tipFontSize + tipPadH * 2);
+              const totalTipH = tipHeights.reduce((a, b) => a + b, 0) + tipSpacing * (tips.length - 1);
+              let tipY = H * 0.79 - totalTipH;
+              cctx.save();
+              tips.slice(0, 3).forEach((tip, i) => {
+                const rowH2 = tipHeights[i];
+                const label = `${tip.icon}  ${tip.text}`;
+                // measure text
+                cctx.font = `700 ${tipFontSize}px Inter, sans-serif`;
+                const textW = Math.min(cctx.measureText(label).width, tipMaxW - tipPadW * 2);
+                const boxW = textW + tipPadW * 2 + H * 0.02;
+                const boxX = W * 0.04;
+                const boxY = tipY;
+                // background
+                cctx.fillStyle = i === 0 ? 'rgba(0,240,255,0.13)' : 'rgba(30,30,60,0.82)';
+                cctx.strokeStyle = i === 0 ? 'rgba(0,240,255,0.35)' : 'rgba(255,255,255,0.08)';
+                cctx.lineWidth = 1;
+                const bCr = rowH2 * 0.45;
+                cctx.beginPath();
+                cctx.moveTo(boxX + bCr, boxY);
+                cctx.lineTo(boxX + boxW - bCr, boxY);
+                cctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + bCr, bCr);
+                cctx.lineTo(boxX + boxW, boxY + rowH2 - bCr);
+                cctx.arcTo(boxX + boxW, boxY + rowH2, boxX + boxW - bCr, boxY + rowH2, bCr);
+                cctx.lineTo(boxX + bCr, boxY + rowH2);
+                cctx.arcTo(boxX, boxY + rowH2, boxX, boxY + rowH2 - bCr, bCr);
+                cctx.lineTo(boxX, boxY + bCr);
+                cctx.arcTo(boxX, boxY, boxX + bCr, boxY, bCr);
+                cctx.closePath();
+                cctx.fill();
+                cctx.stroke();
+                // text
+                cctx.fillStyle = i === 0 ? '#e0faff' : '#9999bb';
+                cctx.textAlign = 'left';
+                cctx.fillText(label, boxX + tipPadW + H * 0.01, boxY + rowH2 / 2 + tipFontSize * 0.35, tipMaxW - tipPadW * 2);
+                tipY += rowH2 + tipSpacing;
+              });
+              cctx.restore();
+            }
+          }
+
+          // 15. Impact arc (semicircle, bottom center above bottom bar)
+          {
+            const imp = impactRef.current;
+            const arcColor = imp >= 80 ? '#00f0ff' : imp >= 60 ? '#ffaa00' : '#444466';
+            const arcCX = W / 2;
+            const arcCY = H * 0.875; // sits just above bottom bar
+            const arcR = H * 0.065;
+            const circumference = Math.PI * arcR;
+            const filled = (imp / 100) * circumference;
+            // background arc
+            cctx.save();
+            cctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            cctx.lineWidth = H * 0.008;
+            cctx.lineCap = 'round';
+            cctx.beginPath();
+            cctx.arc(arcCX, arcCY, arcR, Math.PI, 0, false);
+            cctx.stroke();
+            // foreground arc (filled portion)
+            if (imp > 0) {
+              cctx.strokeStyle = arcColor;
+              cctx.shadowColor = arcColor;
+              cctx.shadowBlur = 8;
+              cctx.setLineDash([filled, circumference - filled]);
+              cctx.lineDashOffset = 0;
+              cctx.beginPath();
+              cctx.arc(arcCX, arcCY, arcR, Math.PI, 0, false);
+              cctx.stroke();
+              cctx.setLineDash([]);
+              cctx.shadowBlur = 0;
+            }
+            // center label
+            cctx.font = `900 ${H * 0.022}px Inter, sans-serif`;
+            cctx.fillStyle = arcColor;
+            cctx.textAlign = 'center';
+            cctx.fillText(`${imp}%`, arcCX, arcCY + H * 0.005);
+            cctx.font = `600 ${H * 0.014}px Inter, sans-serif`;
+            cctx.fillStyle = '#555577';
+            cctx.fillText('IMPACT', arcCX, arcCY + H * 0.024);
+            cctx.restore();
+          }
         }
       }
 
@@ -819,6 +957,7 @@ export default function PracticeScreen() {
   gesturesCountRef.current = state.gestures;
   streakRef.current = state.streak;
   isRecordingRef.current = isRecording;
+  tipsRef.current = state.tips;
 
   const gestureColor = GESTURE_COLORS[state.gesture] ?? '#00f0ff';
 
