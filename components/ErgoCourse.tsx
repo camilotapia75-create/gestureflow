@@ -355,7 +355,7 @@ export default function ErgoCourse() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-5 pt-6 pb-32 overflow-y-auto" style={{ background: '#050510' }}>
+    <div className="page-scroll flex flex-col items-center px-5 pt-6 pb-32" style={{ background: '#050510' }}>
       {/* Header */}
       <div className="w-full max-w-xl flex items-center gap-3 mb-6">
         <button onClick={() => router.push('/')} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
