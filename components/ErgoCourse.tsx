@@ -162,33 +162,33 @@ function LessonCard({ lesson, onNext }: { lesson: typeof LESSONS[0]; onNext: () 
       initial={{ opacity: 0, x: 40 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -40 }}
-      className="flex flex-col gap-5 w-full max-w-xl"
+      className="flex flex-col gap-3 w-full max-w-xl"
     >
       <div className="text-center">
-        <div className="text-5xl mb-3">{lesson.emoji}</div>
-        <h2 className="text-2xl font-black text-white">{lesson.title}</h2>
+        <div className="text-4xl mb-2">{lesson.emoji}</div>
+        <h2 className="text-xl font-black text-white">{lesson.title}</h2>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2.5">
         {lesson.facts.map((f, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="rounded-2xl p-4"
+            className="rounded-2xl p-3"
             style={{ background: 'rgba(18,18,40,0.9)', border: `1px solid ${lesson.color}22` }}
           >
             <div className="flex gap-3 items-start">
               <div
-                className="text-lg font-black shrink-0 leading-none pt-0.5"
-                style={{ color: lesson.color, minWidth: '60px' }}
+                className="text-base font-black shrink-0 leading-none pt-0.5"
+                style={{ color: lesson.color, minWidth: '54px' }}
               >
                 {f.stat}
               </div>
               <div>
-                <p className="text-sm text-gray-300 leading-relaxed">{f.text}</p>
-                <p className="text-[10px] mt-1.5 italic" style={{ color: 'rgba(255,255,255,0.25)' }}>Source: {f.source}</p>
+                <p className="text-xs text-gray-300 leading-relaxed">{f.text}</p>
+                <p className="text-[10px] mt-1 italic" style={{ color: 'rgba(255,255,255,0.25)' }}>Source: {f.source}</p>
               </div>
             </div>
           </motion.div>
@@ -196,7 +196,7 @@ function LessonCard({ lesson, onNext }: { lesson: typeof LESSONS[0]; onNext: () 
       </div>
 
       <div
-        className="rounded-2xl p-4 text-sm font-semibold text-center leading-relaxed"
+        className="rounded-2xl p-3 text-xs font-semibold text-center leading-relaxed"
         style={{ background: `${lesson.color}14`, border: `1px solid ${lesson.color}30`, color: lesson.color }}
       >
         💡 {lesson.takeaway}
@@ -204,7 +204,7 @@ function LessonCard({ lesson, onNext }: { lesson: typeof LESSONS[0]; onNext: () 
 
       <button
         onClick={onNext}
-        className="w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2"
+        className="w-full py-3.5 rounded-2xl font-black text-base flex items-center justify-center gap-2"
         style={{ background: `linear-gradient(135deg, ${lesson.color}, #7b2fff)`, color: '#050510' }}
       >
         Continue <ArrowRight size={18} />
@@ -355,7 +355,7 @@ export default function ErgoCourse() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-5 pt-6 pb-28" style={{ background: '#050510' }}>
+    <div className="min-h-screen flex flex-col items-center px-5 pt-6 pb-32 overflow-y-auto" style={{ background: '#050510' }}>
       {/* Header */}
       <div className="w-full max-w-xl flex items-center gap-3 mb-6">
         <button onClick={() => router.push('/')} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
