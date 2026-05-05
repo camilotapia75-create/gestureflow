@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   Cloud, LogIn, LogOut,
   Flame, Star, Clock, Zap, TrendingUp,
-  Mic, Monitor, Smile, ChevronRight,
+  Mic, Monitor, Smile, ChevronRight, GraduationCap,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -342,8 +342,8 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* ── 3 Tool Cards ── */}
-        <div className="grid grid-cols-3 gap-3 md:gap-5 mb-6">
+        {/* ── Tool Cards ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-6">
           <ToolCard
             icon={Mic}
             name="Presentation Coach"
@@ -376,6 +376,17 @@ export default function Dashboard() {
             color="#ff00cc"
             delay={0.25}
             onClick={() => router.push('/smile')}
+          />
+          <ToolCard
+            icon={GraduationCap}
+            name="Ergo Certification"
+            description="Learn ergonomics, pass the exam, earn your certificate"
+            stat="5 lessons · 10-question exam"
+            statColor="#ffaa00"
+            cta="Start Course"
+            color="#ffaa00"
+            delay={0.3}
+            onClick={() => router.push('/ergo')}
           />
         </div>
 
