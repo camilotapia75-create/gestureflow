@@ -1,14 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import {
-  Cloud, LogIn, LogOut,
-  Flame, Star, Clock, Zap, TrendingUp,
-  Mic, Monitor, Smile, ChevronRight, GraduationCap,
-  type LucideIcon,
-} from 'lucide-react';
+import { Cloud, LogIn, LogOut, Mic, Monitor, Smile, GraduationCap, Zap, Flame, Star, Clock, TrendingUp, type LucideIcon } from 'lucide-react';
 
 import { loadStats, formatTime, StoredStats } from '@/lib/storage';
 import { loadSessionsFromDb, type DbSession } from '@/lib/db';
@@ -17,132 +12,141 @@ import { createClient } from '@/lib/supabase';
 import AuroraBackground from './AuroraBackground';
 
 function getTodayStr() { return new Date().toISOString().split('T')[0]; }
-
 function loadTodaySmileCount(): number {
   try {
-    const raw = localStorage.getItem('gestureflow_smile_quota');
-    if (!raw) return 0;
-    const parsed = JSON.parse(raw);
-    if (parsed.date !== getTodayStr()) return 0;
-    return Math.min(parsed.count ?? 0, 10);
+    const d = JSON.parse(localStorage.getItem('gestureflow_smile_quota') ?? '{}');
+    return d.date === getTodayStr() ? Math.min(d.count ?? 0, 10) : 0;
   } catch { return 0; }
 }
 
-// ── Animated counter ──────────────────────────────────────────────────────────
-function Counter({ value }: { value: number | string }) {
-  const [display, setDisplay] = useState(0);
-  const target = typeof value === 'number' ? value : 0;
-  useEffect(() => {
-    if (typeof value !== 'number') return;
-    let cur = 0;
-    const step = Math.max(1, Math.ceil(target / 32));
-    const id = setInterval(() => {
-      cur = Math.min(cur + step, target);
-      setDisplay(cur);
-      if (cur >= target) clearInterval(id);
-    }, 24);
-    return () => clearInterval(id);
-  }, [target, value]);
-  if (typeof value === 'string') return <>{value}</>;
-  return <>{display}</>;
-}
+// ── 3-D tilt card wrapper ─────────────────────────────────────────────────────
+function TiltCard({ children, className = '', style = {} }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const rx = useMotionValue(0); const ry = useMotionValue(0);
+  const sx = useSpring(rx, { stiffness: 200, damping: 22 });
+  const sy = useSpring(ry, { stiffness: 200, damping: 22 });
 
-// ── Spotlight Tool Card ───────────────────────────────────────────────────────
-function ToolCard({
-  icon: Icon, name, description, stat, statColor,
-  cta, color, delay, onClick,
-}: {
-  icon: LucideIcon; name: string; description: string;
-  stat: string; statColor: string; cta: string;
-  color: string; delay: number; onClick: () => void;
-}) {
-  const cardRef = useRef<HTMLButtonElement>(null);
+  const onMove = useCallback((e: React.MouseEvent) => {
+    if (window.matchMedia('(pointer:coarse)').matches) return;
+    const el = ref.current; if (!el) return;
+    const { left, top, width, height } = el.getBoundingClientRect();
+    rx.set(((e.clientY - top) / height - 0.5) * -10);
+    ry.set(((e.clientX - left) / width - 0.5) * 10);
+  }, [rx, ry]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const el = cardRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    el.style.setProperty('--mx', `${e.clientX - rect.left}px`);
-    el.style.setProperty('--my', `${e.clientY - rect.top}px`);
-  }, []);
+  const onLeave = useCallback(() => { rx.set(0); ry.set(0); }, [rx, ry]);
 
   return (
-    <motion.button
-      ref={cardRef}
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-      whileHover={{ y: -3, transition: { duration: 0.18 } }}
-      whileTap={{ scale: 0.97 }}
-      onClick={onClick}
-      onMouseMove={handleMouseMove}
-      className="spotlight-card w-full relative overflow-hidden rounded-2xl p-4 md:p-6 flex flex-col items-start text-left gap-0 min-h-[164px] md:min-h-0 md:aspect-square"
-      style={{
-        background: 'rgba(10,10,26,0.8)',
-        border: `1px solid ${color}1a`,
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-      } as React.CSSProperties}
+    <motion.div ref={ref} onMouseMove={onMove} onMouseLeave={onLeave}
+      style={{ rotateX: sx, rotateY: sy, transformStyle: 'preserve-3d', transformPerspective: 900, ...style }}
+      className={className}
     >
-      {/* Spotlight */}
-      <div className="pointer-events-none absolute inset-0 rounded-2xl" style={{ background: `radial-gradient(260px circle at var(--mx,50%) var(--my,50%), ${color}10, transparent 70%)` }} />
-      {/* Top edge glow */}
-      <div className="absolute top-0 left-8 right-8 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color}35, transparent)` }} />
-
-      <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center mb-3 flex-shrink-0" style={{ background: `${color}12`, border: `1px solid ${color}25` }}>
-        <Icon size={18} className="md:hidden" style={{ color }} />
-        <Icon size={20} className="hidden md:block" style={{ color }} />
-      </div>
-
-      <p className="text-sm font-bold text-white leading-snug mb-1">{name}</p>
-      <p className="text-[10px] md:text-[11px] text-gray-600 leading-snug mb-auto line-clamp-2">{description}</p>
-      <p className="text-[10px] font-semibold mt-1.5 leading-snug" style={{ color: statColor }}>{stat}</p>
-
-      <div className="w-full mt-2.5 py-2 rounded-xl flex items-center justify-center gap-1" style={{ background: `${color}10`, border: `1px solid ${color}22` }}>
-        <span className="text-[10px] md:text-[11px] font-black" style={{ color }}>{cta}</span>
-        <ChevronRight size={10} style={{ color }} />
-      </div>
-    </motion.button>
-  );
-}
-
-// ── Stat Card ─────────────────────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, unit = '', color, delay }: {
-  icon: LucideIcon; label: string; value: string | number; unit?: string; color: string; delay: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
-      className="rounded-2xl p-4 relative overflow-hidden"
-      style={{ background: 'rgba(10,10,26,0.8)', border: `1px solid ${color}15`, backdropFilter: 'blur(20px)' }}
-    >
-      <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-10 pointer-events-none" style={{ background: color, filter: 'blur(22px)' }} />
-      <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3" style={{ background: `${color}12`, border: `1px solid ${color}20` }}>
-        <Icon size={14} style={{ color }} />
-      </div>
-      <div className="flex items-baseline gap-0.5">
-        <span className="text-2xl font-black text-white"><Counter value={value} /></span>
-        {unit && <span className="text-xs font-bold ml-0.5" style={{ color }}>{unit}</span>}
-      </div>
-      <span className="text-[10px] text-gray-600 font-semibold uppercase tracking-wider">{label}</span>
+      {children}
     </motion.div>
   );
 }
 
-// ── Activity bar ──────────────────────────────────────────────────────────────
-function ActivityBar({ value, max }: { value: number; max: number }) {
-  const pct = max > 0 ? (value / max) * 100 : 0;
+// ── Animated counter ──────────────────────────────────────────────────────────
+function Counter({ to }: { to: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let c = 0; const step = Math.max(1, Math.ceil(to / 28));
+    const id = setInterval(() => { c = Math.min(c + step, to); setN(c); if (c >= to) clearInterval(id); }, 22);
+    return () => clearInterval(id);
+  }, [to]);
+  return <>{n}</>;
+}
+
+// ── Bento card (large hero) ───────────────────────────────────────────────────
+function HeroCard({ icon: Icon, name, sub, stat, color, gradient, delay, onClick }: {
+  icon: LucideIcon; name: string; sub: string; stat: string; color: string; gradient: string; delay: number; onClick: () => void;
+}) {
   return (
-    <div className="w-full h-12 rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)' }}>
-      <motion.div
-        className="w-full rounded-lg"
-        style={{ background: 'linear-gradient(180deg,#00f0ff,#7b2fff)', height: '100%', transformOrigin: 'bottom' }}
-        initial={{ scaleY: 0 }}
-        animate={{ scaleY: pct / 100 }}
-        transition={{ duration: 0.9, ease: [0.23, 1, 0.32, 1] }}
-      />
+    <TiltCard className="col-span-2 row-span-1 md:col-span-2 md:row-span-2">
+      <motion.button
+        initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+        whileTap={{ scale: 0.98 }}
+        onClick={onClick}
+        className="relative w-full h-full min-h-[160px] md:min-h-[280px] rounded-3xl overflow-hidden text-left p-6 md:p-8 flex flex-col justify-between"
+        style={{ background: 'rgba(8,8,22,0.85)', border: `1px solid ${color}25`, backdropFilter: 'blur(28px)' }}
+      >
+        {/* Animated gradient blob */}
+        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full pointer-events-none" style={{ background: gradient, filter: 'blur(52px)', opacity: 0.35 }} />
+        {/* Bottom gradient */}
+        <div className="absolute bottom-0 left-0 right-0 h-2/3 pointer-events-none" style={{ background: `linear-gradient(0deg, ${color}0a, transparent)` }} />
+        {/* Top edge line */}
+        <div className="absolute top-0 left-10 right-10 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color}50, transparent)` }} />
+
+        <div className="relative z-10 flex items-start justify-between">
+          <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center" style={{ background: `${color}15`, border: `1px solid ${color}30` }}>
+            <Icon size={22} className="md:hidden" style={{ color }} />
+            <Icon size={26} className="hidden md:block" style={{ color }} />
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full" style={{ background: `${color}12`, border: `1px solid ${color}25`, color }}>
+            {stat}
+          </span>
+        </div>
+
+        <div className="relative z-10 mt-auto">
+          <p className="text-xl md:text-3xl font-black text-white leading-tight mb-1">{name}</p>
+          <p className="text-xs md:text-sm text-gray-500 mb-4">{sub}</p>
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-black text-sm"
+            style={{ background: `linear-gradient(135deg, ${color}, ${color}aa)`, color: '#050510', boxShadow: `0 0 28px ${color}40` }}>
+            Start Session →
+          </div>
+        </div>
+      </motion.button>
+    </TiltCard>
+  );
+}
+
+// ── Mini bento card ───────────────────────────────────────────────────────────
+function MiniCard({ icon: Icon, name, sub, color, delay, onClick, badge }: {
+  icon: LucideIcon; name: string; sub: string; color: string; delay: number; onClick: () => void; badge?: string;
+}) {
+  return (
+    <TiltCard>
+      <motion.button
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay, duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
+        whileTap={{ scale: 0.97 }}
+        onClick={onClick}
+        className="spotlight-card relative w-full min-h-[130px] md:min-h-0 md:aspect-square rounded-2xl p-4 md:p-5 flex flex-col justify-between text-left overflow-hidden"
+        style={{ background: 'rgba(8,8,22,0.85)', border: `1px solid ${color}18`, backdropFilter: 'blur(24px)' }}
+      >
+        <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full pointer-events-none" style={{ background: color, filter: 'blur(32px)', opacity: 0.12 }} />
+        <div className="absolute top-0 left-5 right-5 h-px pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, ${color}30, transparent)` }} />
+
+        <div className="flex items-start justify-between mb-auto">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}12`, border: `1px solid ${color}22` }}>
+            <Icon size={16} style={{ color }} />
+          </div>
+          {badge && <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: `${color}10`, border: `1px solid ${color}20`, color }}>{badge}</span>}
+        </div>
+
+        <div>
+          <p className="text-sm font-bold text-white leading-snug mb-0.5">{name}</p>
+          <p className="text-[10px] text-gray-600 leading-snug">{sub}</p>
+        </div>
+      </motion.button>
+    </TiltCard>
+  );
+}
+
+// ── Stat pill ─────────────────────────────────────────────────────────────────
+function StatPill({ icon: Icon, label, value, unit = '', color }: { icon: LucideIcon; label: string; value: string | number; unit?: string; color: string }) {
+  return (
+    <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl" style={{ background: 'rgba(8,8,22,0.85)', border: `1px solid ${color}15`, backdropFilter: 'blur(20px)' }}>
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}12`, border: `1px solid ${color}20` }}>
+        <Icon size={13} style={{ color }} />
+      </div>
+      <div>
+        <div className="text-base font-black text-white leading-none">
+          {typeof value === 'number' ? <Counter to={value} /> : value}{unit}
+        </div>
+        <div className="text-[9px] text-gray-600 uppercase tracking-wider font-semibold mt-0.5">{label}</div>
+      </div>
     </div>
   );
 }
@@ -151,17 +155,15 @@ function ActivityBar({ value, max }: { value: number; max: number }) {
 export default function Dashboard() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
-
   const [localStats, setLocalStats]       = useState<StoredStats | null>(null);
   const [cloudSessions, setCloudSessions] = useState<DbSession[] | null>(null);
   const [cloudLoading, setCloudLoading]   = useState(false);
   const [todaySmiles, setTodaySmiles]     = useState(0);
   const [now, setNow]                     = useState(new Date());
-  const [showMore, setShowMore]           = useState(false);
+  const [showStats, setShowStats]         = useState(false);
 
   useEffect(() => {
-    setLocalStats(loadStats());
-    setTodaySmiles(loadTodaySmileCount());
+    setLocalStats(loadStats()); setTodaySmiles(loadTodaySmileCount());
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
@@ -169,151 +171,135 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) { setCloudSessions(null); return; }
     setCloudLoading(true);
-    loadSessionsFromDb().then(rows => setCloudSessions(rows)).finally(() => setCloudLoading(false));
+    loadSessionsFromDb().then(r => setCloudSessions(r)).finally(() => setCloudLoading(false));
   }, [user]);
 
-  async function handleSignOut() {
-    await createClient().auth.signOut();
-    router.refresh();
-  }
+  const totalGestures = user && cloudSessions ? cloudSessions.reduce((s, r) => s + r.gestures, 0) : localStats?.totalGestures ?? 0;
+  const bestImpact    = user && cloudSessions && cloudSessions.length > 0 ? Math.max(...cloudSessions.map(r => r.peak_impact)) : localStats?.bestImpact ?? 0;
+  const totalTime     = user && cloudSessions ? cloudSessions.reduce((s, r) => s + r.duration, 0) : localStats?.totalTime ?? 0;
+  const bestStreak    = user && cloudSessions && cloudSessions.length > 0 ? Math.max(...cloudSessions.map(r => r.best_streak)) : localStats?.bestStreak ?? 0;
+  const totalSessions = user && cloudSessions ? cloudSessions.length : localStats?.totalSessions ?? 0;
 
   const h = now.getHours();
-  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-
-  const totalGestures = user && cloudSessions ? cloudSessions.reduce((s, r) => s + r.gestures, 0)       : localStats?.totalGestures ?? 0;
-  const bestImpact    = user && cloudSessions && cloudSessions.length > 0 ? Math.max(...cloudSessions.map(r => r.peak_impact)) : localStats?.bestImpact ?? 0;
-  const totalTime     = user && cloudSessions ? cloudSessions.reduce((s, r) => s + r.duration, 0)        : localStats?.totalTime ?? 0;
-  const bestStreak    = user && cloudSessions && cloudSessions.length > 0 ? Math.max(...cloudSessions.map(r => r.best_streak)) : localStats?.bestStreak ?? 0;
-  const totalSessions = user && cloudSessions ? cloudSessions.length                                      : localStats?.totalSessions ?? 0;
-  const weekActivity  = Array.from({ length: 7 }, (_, i) => { const s = localStats?.sessions[(localStats.sessions.length - 7 + i)]; return s ? s.impact : 0; });
-  const maxActivity   = Math.max(...weekActivity, 1);
-
-  const smileStatColor   = todaySmiles >= 10 ? '#00ff88' : todaySmiles >= 5 ? '#ffcc00' : '#ff00cc';
-  const smileStat        = todaySmiles >= 10 ? '10/10 — quota complete' : `${todaySmiles}/10 smiles today`;
-  const presentationStat = cloudLoading ? 'Loading…' : totalGestures === 0 ? 'No sessions yet' : `${totalGestures} gestures · ${totalSessions} session${totalSessions !== 1 ? 's' : ''}`;
+  const greeting = h < 5 ? 'Late night grind' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const smileStat = todaySmiles >= 10 ? '10/10 done' : `${todaySmiles}/10 today`;
 
   const TIPS = [
-    'Open gestures with palms facing out build 40% more audience trust.',
-    'Pause 2–3 seconds before key points — it signals confidence and command.',
-    'Standing feet shoulder-width apart lowers cortisol and raises testosterone.',
-    'Eye contact held 3–5 seconds per person makes audiences feel personally addressed.',
-    "Mirroring your audience's posture in the first 60 seconds increases rapport by 30%.",
-    'Gesturing above the waist signals enthusiasm; below the waist signals uncertainty.',
-    'Speakers who vary vocal pitch are rated 38% more interesting than monotone speakers.',
-    'The steeple gesture — fingertips touching — is consistently linked to authority in research.',
-    'People decide whether they like a speaker within the first 7 seconds.',
-    'A brief smile before speaking activates mirror neurons, making audiences more receptive.',
+    'Open palms build 40% more trust with your audience.',
+    'A 2-second pause before key points signals authority.',
+    'Shoulder-width stance lowers cortisol within minutes.',
+    'Vary your vocal pitch — monotone speakers lose 38% more attention.',
+    '7 seconds. That\'s how long you have to make a first impression.',
+    'The steeple gesture is the single most studied sign of authority.',
   ];
+  const tip = TIPS[Math.floor(Date.now() / 86400000) % TIPS.length];
 
   return (
     <div className="page-scroll" style={{ background: '#050510' }}>
       <AuroraBackground />
 
-      <div className="relative z-10 min-h-full px-5 pt-safe pb-28 flex flex-col">
+      <div className="relative z-10 min-h-full px-4 md:px-6 pt-safe pb-28 flex flex-col">
 
-        {/* Top bar */}
-        <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-          className="pt-5 mb-5 flex items-center justify-between"
-        >
-          <div>
-            <h1 className="text-2xl font-black tracking-tight">
-              <span style={{ color: '#00f0ff', textShadow: '0 0 24px #00f0ff55' }}>Gesture</span>
-              <span className="text-white">Flow</span>
-            </h1>
-            <p className="text-xs font-medium mt-0.5" style={{ color: '#333355' }}>{greeting}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {!userLoading && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold"
-                style={{ background: user ? 'rgba(0,255,136,0.06)' : 'rgba(255,255,255,0.03)', border: `1px solid ${user ? 'rgba(0,255,136,0.12)' : 'rgba(255,255,255,0.06)'}`, color: user ? '#00ff88' : '#333355' }}>
-                <Cloud size={10} />{user ? 'Synced' : 'Local'}
+        {/* ── Top bar ── */}
+        <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.23,1,0.32,1] }}
+          className="pt-5 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* Logo with pulsing rings */}
+            <div className="relative w-9 h-9 shrink-0">
+              <div className="absolute inset-0 rounded-xl animate-ping" style={{ background: 'rgba(0,240,255,0.12)', animationDuration: '2.5s' }} />
+              <div className="relative w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#00f0ff22,#7b2fff22)', border: '1px solid rgba(0,240,255,0.3)' }}>
+                <Zap size={16} style={{ color: '#00f0ff' }} />
               </div>
-            )}
+            </div>
+            <div>
+              <h1 className="text-lg font-black leading-none" style={{ background: 'linear-gradient(90deg,#00f0ff,#7b2fff,#ff00cc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                GestureFlow
+              </h1>
+              <p className="text-[10px] font-medium" style={{ color: '#2a2a4a' }}>{greeting}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Live indicator */}
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold" style={{ background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.12)', color: '#00ff88' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />AI Ready
+            </div>
             {!userLoading && (
               user
-                ? <button onClick={handleSignOut} className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                    <LogOut size={13} style={{ color: '#444466' }} />
+                ? <button onClick={async () => { await createClient().auth.signOut(); router.refresh(); }}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    <LogOut size={13} style={{ color: '#333355' }} />
                   </button>
-                : <button onClick={() => router.push('/auth')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold" style={{ background: 'rgba(0,240,255,0.09)', border: '1px solid rgba(0,240,255,0.18)', color: '#00f0ff' }}>
+                : <button onClick={() => router.push('/auth')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold" style={{ background: 'rgba(0,240,255,0.08)', border: '1px solid rgba(0,240,255,0.16)', color: '#00f0ff' }}>
                     <LogIn size={11} />Sign In
                   </button>
             )}
           </div>
         </motion.div>
 
-        {/* Daily tip */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-          className="rounded-2xl p-4 mb-5 relative overflow-hidden"
-          style={{ background: 'rgba(0,240,255,0.03)', border: '1px solid rgba(0,240,255,0.08)', backdropFilter: 'blur(20px)' }}
-        >
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(120deg, rgba(0,240,255,0.04) 0%, transparent 55%)' }} />
-          <div className="relative flex items-start gap-3">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'rgba(0,240,255,0.1)', border: '1px solid rgba(0,240,255,0.18)' }}>
-              <Zap size={13} style={{ color: '#00f0ff' }} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(0,240,255,0.5)' }}>Today's Tip</p>
-              <p className="text-xs text-gray-400 leading-relaxed">{TIPS[Math.floor(Date.now() / 86400000) % TIPS.length]}</p>
-            </div>
-          </div>
-        </motion.div>
+        {/* ── Bento grid ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4" style={{ gridAutoRows: 'auto' }}>
+          {/* Hero card — Presentation Coach */}
+          <HeroCard
+            icon={Mic} name="Presentation Coach" sub="Real-time gesture & posture coaching"
+            stat={totalGestures > 0 ? `${totalGestures} moves` : 'Start free'}
+            color="#00f0ff" gradient="radial-gradient(circle, #00f0ff, #7b2fff)"
+            delay={0.1} onClick={() => router.push('/practice')}
+          />
 
-        {/* Tool cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4">
-          <ToolCard icon={Mic}           name="Presentation Coach" description="Practice body language, gestures & presence"    stat={presentationStat}   statColor={totalGestures > 0 ? '#00f0ff' : '#222244'} cta="Start Session" color="#00f0ff" delay={0.15} onClick={() => router.push('/practice')} />
-          <ToolCard icon={Monitor}       name="Office Ergonomics"  description="Real-time posture monitoring & slouch alerts"   stat="Live posture tracking" statColor="#7b2fff"        cta="Start"         color="#7b2fff" delay={0.2}  onClick={() => router.push('/office')} />
-          <ToolCard icon={Smile}         name="Daily Smile Quota"  description="Hit 10 smiles a day to boost energy & mood"    stat={smileStat}          statColor={smileStatColor}    cta="Start"         color="#ff00cc" delay={0.25} onClick={() => router.push('/smile')} />
-          <ToolCard icon={GraduationCap} name="Ergo Certification" description="5-lesson course · earn your certificate"       stat="5 lessons · 10 questions" statColor="#ffaa00"   cta="Start Course"  color="#ffaa00" delay={0.3}  onClick={() => router.push('/ergo')} />
+          {/* Office Ergo */}
+          <MiniCard icon={Monitor} name="Office Ergonomics" sub="Live posture monitoring"
+            color="#7b2fff" delay={0.18} onClick={() => router.push('/office')} badge="Live" />
+
+          {/* Smile Quota */}
+          <MiniCard icon={Smile} name="Smile Quota" sub={smileStat}
+            color="#ff00cc" delay={0.24} onClick={() => router.push('/smile')}
+            badge={todaySmiles >= 10 ? 'Done' : undefined} />
+
+          {/* Ergo Cert */}
+          <MiniCard icon={GraduationCap} name="Ergo Cert" sub="5 lessons · 10 questions"
+            color="#ffaa00" delay={0.3} onClick={() => router.push('/ergo')} badge="Free" />
         </div>
 
-        {/* Stats toggle */}
-        <button onClick={() => setShowMore(v => !v)} className="flex items-center gap-1.5 text-[11px] font-bold mb-3 self-start transition-colors" style={{ color: showMore ? '#00f0ff' : '#333355' }}>
-          <motion.span animate={{ rotate: showMore ? 180 : 0 }} transition={{ duration: 0.22 }} className="inline-block">▾</motion.span>
-          {showMore ? 'Hide stats' : 'Your stats'}
-        </button>
+        {/* ── Daily tip strip ── */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35, duration: 0.5 }}
+          className="rounded-2xl px-4 py-3 mb-4 flex items-center gap-3 relative overflow-hidden"
+          style={{ background: 'rgba(0,240,255,0.03)', border: '1px solid rgba(0,240,255,0.07)', backdropFilter: 'blur(20px)' }}>
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(0,240,255,0.04), transparent 40%)' }} />
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 relative" style={{ background: 'rgba(0,240,255,0.1)', border: '1px solid rgba(0,240,255,0.16)' }}>
+            <Zap size={12} style={{ color: '#00f0ff' }} />
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed relative"><span className="font-bold" style={{ color: 'rgba(0,240,255,0.5)' }}>Today — </span>{tip}</p>
+        </motion.div>
 
-        <AnimatePresence>
-          {showMore && (
-            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.22 }}>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <StatCard icon={Flame} label="Power Moves" value={cloudLoading ? '…' : totalGestures} color="#ff6600" delay={0} />
-                <StatCard icon={Star}  label="Best Impact" value={cloudLoading ? '…' : bestImpact} unit="%" color="#ffaa00" delay={0.05} />
-                <StatCard icon={Clock} label="Total Time"  value={cloudLoading ? '…' : formatTime(totalTime)} color="#00f0ff" delay={0.1} />
-                <StatCard icon={Zap}   label="Best Streak" value={cloudLoading ? '…' : bestStreak} unit="s" color="#7b2fff" delay={0.15} />
-              </div>
-              <div className="rounded-2xl p-4 mb-4" style={{ background: 'rgba(10,10,26,0.8)', border: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)' }}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-bold text-white">This Week</span>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#00f0ff' }}>
-                    <TrendingUp size={12} /><span>{totalSessions} sessions</span>
+        {/* ── Stats row ── */}
+        {(totalGestures > 0 || totalSessions > 0) && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.5 }}>
+            <button onClick={() => setShowStats(v => !v)} className="flex items-center gap-1.5 text-[10px] font-bold mb-2.5 tracking-widest uppercase" style={{ color: '#1a1a3a' }}>
+              <TrendingUp size={10} />{showStats ? 'Hide' : 'Your stats'}
+            </button>
+            <AnimatePresence>
+              {showStats && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }}>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
+                    <StatPill icon={Flame} label="Moves"       value={cloudLoading ? 0 : totalGestures} color="#ff6600" />
+                    <StatPill icon={Star}  label="Best Impact" value={cloudLoading ? 0 : bestImpact} unit="%" color="#ffaa00" />
+                    <StatPill icon={Clock} label="Total Time"  value={cloudLoading ? '…' : formatTime(totalTime)} color="#00f0ff" />
+                    <StatPill icon={Zap}   label="Best Streak" value={cloudLoading ? 0 : bestStreak} unit="s" color="#7b2fff" />
                   </div>
-                </div>
-                <div className="flex items-end justify-between gap-2">
-                  {['M','T','W','T','F','S','S'].map((day, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
-                      <ActivityBar value={weekActivity[i]} max={maxActivity} />
-                      <span className="text-[10px] text-gray-700">{day}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
 
+        {/* ── Sign-in nudge ── */}
         {!userLoading && !user && (
-          <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+          <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55 }}
             onClick={() => router.push('/auth')}
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-xs font-bold mt-auto"
-            style={{ background: 'rgba(0,240,255,0.04)', border: '1px solid rgba(0,240,255,0.08)', color: '#333355' }}
-          >
-            <Cloud size={11} />Sync progress across devices — sign in free
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl text-[10px] font-bold mt-auto tracking-widest uppercase"
+            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', color: '#1a1a3a' }}>
+            <Cloud size={10} />Sync across devices — sign in free
           </motion.button>
         )}
 
