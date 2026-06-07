@@ -55,19 +55,19 @@ function FeatureCard({
       initial={{ opacity: 0, y: 22, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -3, transition: { duration: 0.2 } }}
-      whileTap={{ scale: 0.97 }}
+      whileHover={{ y: -6, scale: 1.03, transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } }}
+      whileTap={{ scale: 0.96 }}
       onClick={onClick}
       className="relative overflow-hidden rounded-2xl p-4 flex flex-col items-start gap-3 text-left w-full"
-      style={{ ...glass, minHeight: 148 }}
+      style={{ ...glass, minHeight: 148, transition: 'box-shadow 0.2s ease, border-color 0.2s ease' }}
     >
       {/* Top accent line */}
       <div className="absolute top-0 left-0 right-0 h-px"
         style={{ background: `linear-gradient(90deg, transparent, ${accent}90, transparent)` }} />
 
-      {/* Ambient bloom */}
+      {/* Ambient bloom — grows on hover via CSS */}
       <div className="absolute -top-8 -left-4 w-28 h-28 rounded-full pointer-events-none"
-        style={{ background: accent, filter: 'blur(28px)', opacity: 0.12 }} />
+        style={{ background: accent, filter: 'blur(28px)', opacity: 0.18 }} />
 
       {/* Icon */}
       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -309,21 +309,21 @@ export default function Dashboard() {
               icon={Mic} name="Presentation Coach"
               stat={cloudLoading ? 'Loading…' : totalGestures === 0 ? 'No sessions yet' : `${totalGestures} gestures · ${totalSessions} session${totalSessions !== 1 ? 's' : ''}`}
               statColor={totalGestures > 0 ? '#00d4ff' : '#333355'}
-              cta="Launch" accent="#00d4ff" delay={0.14}
+              cta="Start" accent="#00d4ff" delay={0.14}
               onClick={() => router.push('/practice')}
             />
             <FeatureCard
               icon={Monitor} name="Office Ergonomics"
               stat="Posture alerts while you work"
               statColor="#7b2fff"
-              cta="Launch" accent="#7b2fff" delay={0.19}
+              cta="Start" accent="#7b2fff" delay={0.19}
               onClick={() => router.push('/office')}
             />
             <FeatureCard
               icon={Smile} name="Smile Quota"
               stat={smileStat}
               statColor={smileStatColor}
-              cta="Track" accent="#ff00cc" delay={0.24}
+              cta="Start" accent="#ff00cc" delay={0.24}
               onClick={() => router.push('/smile')}
             />
             <FeatureCard
